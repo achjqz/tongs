@@ -1,7 +1,7 @@
 import CryptoKit
 import Foundation
 import Testing
-@testable import KVCore
+@testable import TongsCore
 
 func scrub(_ chunks: [String], secrets: [(name: String, value: String)]) -> String {
     let s = Scrubber(secrets: secrets)
@@ -73,8 +73,8 @@ let token = "ghp_abcDEF1234567890xyz"
     // A grant written by someone without the key is ignored.
     var forged = Grant(secret: "OTHER", agent: "Codex", project: "/p", expires: now.addingTimeInterval(60))
     forged.mac = Data(repeating: 1, count: 32).base64EncodedString()
-    let all = try JSONDecoder.kv.decode([Grant].self, from: Data(contentsOf: book.url)) + [forged]
-    try JSONEncoder.kv.encode(all).write(to: book.url)
+    let all = try JSONDecoder.tongs.decode([Grant].self, from: Data(contentsOf: book.url)) + [forged]
+    try JSONEncoder.tongs.encode(all).write(to: book.url)
     #expect(!book.covers(secret: "OTHER", agent: "Codex", project: "/p", now: now))
     #expect(book.covers(secret: "GH", agent: "Codex", project: "/p", now: now))
 }
@@ -114,10 +114,10 @@ let token = "ghp_abcDEF1234567890xyz"
     func check(_ input: [String: Any]) -> String? {
         Guard.check(hookInput: try! JSONSerialization.data(withJSONObject: input))
     }
-    #expect(check(["tool_name": "Bash", "tool_input": ["command": "security find-generic-password -s dev.kv.secrets -a GH -w"]]) != nil)
+    #expect(check(["tool_name": "Bash", "tool_input": ["command": "security find-generic-password -s dev.tongs.secrets -a GH -w"]]) != nil)
     #expect(check(["tool_name": "Bash", "tool_input": ["command": "security dump-keychain -d"]]) != nil)
     #expect(check(["tool_name": "Read", "tool_input": ["file_path": "/Users/x/Library/Keychains/login.keychain-db"]]) != nil)
     #expect(check(["tool_name": "exec_command", "tool_input": ["cmd": ["bash", "-lc", "security find-internet-password -g"]]]) != nil)
-    #expect(check(["tool_name": "Bash", "tool_input": ["command": "kv run GH -- gh pr list"]]) == nil)
+    #expect(check(["tool_name": "Bash", "tool_input": ["command": "tongs run GH -- gh pr list"]]) == nil)
     #expect(check(["tool_name": "Bash", "tool_input": ["command": "git log --grep security"]]) == nil)
 }

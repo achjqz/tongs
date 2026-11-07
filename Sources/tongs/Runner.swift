@@ -1,6 +1,6 @@
 import Darwin
 import Foundation
-import KVCore
+import TongsCore
 
 /// Spawns the command with secrets in its environment and pipes its stdout/stderr
 /// through a Scrubber. Returns the child's exit code (128+signal if it was killed).
@@ -23,7 +23,7 @@ enum Runner {
         posix_spawn_file_actions_adddup2(&actions, errPipe[1], 2)
         for fd in outPipe + errPipe { posix_spawn_file_actions_addclose(&actions, fd) }
 
-        // kv ignores ^C so it can keep draining output while the child decides how to exit;
+        // tongs ignores ^C so it can keep draining output while the child decides how to exit;
         // the child gets default dispositions back.
         var attr: posix_spawnattr_t?
         posix_spawnattr_init(&attr)

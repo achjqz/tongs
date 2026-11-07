@@ -5,12 +5,12 @@ import LocalAuthentication
 /// Human-facing prompts. Everything here runs in-process and exits with the command:
 /// there is no resident app.
 enum UI {
-    /// Touch ID (or login password) with a reason line. macOS renders it as "“kv” is trying to <reason>".
+    /// Touch ID (or login password) with a reason line. macOS renders it as "“tongs” is trying to <reason>".
     static func authenticate(_ reason: String) throws {
         let ctx = LAContext()
         var err: NSError?
         guard ctx.canEvaluatePolicy(.deviceOwnerAuthentication, error: &err) else {
-            throw KVError("cannot ask for approval here: \(err?.localizedDescription ?? "unknown error")")
+            throw TongsError("cannot ask for approval here: \(err?.localizedDescription ?? "unknown error")")
         }
         let sem = DispatchSemaphore(value: 0)
         var ok = false
@@ -21,7 +21,7 @@ enum UI {
             sem.signal()
         }
         sem.wait()
-        guard ok else { throw KVError("not approved: \(failure?.localizedDescription ?? "cancelled")") }
+        guard ok else { throw TongsError("not approved: \(failure?.localizedDescription ?? "cancelled")") }
     }
 
     struct Entry {
@@ -54,7 +54,7 @@ enum UI {
         let main = NSMenu()
         let appItem = NSMenuItem()
         let appMenu = NSMenu()
-        appMenu.addItem(withTitle: "退出 kv", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        appMenu.addItem(withTitle: "退出 tongs", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         appItem.submenu = appMenu
         main.addItem(appItem)
 

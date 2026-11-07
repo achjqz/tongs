@@ -1,6 +1,6 @@
 import Foundation
 
-/// Decides whether an agent tool call reaches around kv to read secrets directly.
+/// Decides whether an agent tool call reaches around tongs to read secrets directly.
 /// Input is the PreToolUse JSON that Claude Code and Codex hooks receive on stdin.
 public enum Guard {
     static let commandRules: [(NSRegularExpression, String)] = [
@@ -19,7 +19,7 @@ public enum Guard {
         for s in strings {
             let range = NSRange(s.startIndex..., in: s)
             for (re, why) in commandRules where re.firstMatch(in: s, range: range) != nil {
-                return "kv guard: this call \(why). Secrets are stored in kv; use `kv run NAME -- <command>` so the value is injected without being printed. `kv ls` lists what exists."
+                return "tongs guard: this call \(why). Secrets are stored in tongs; use `tongs run NAME -- <command>` so the value is injected without being printed. `tongs ls` lists what exists."
             }
         }
         return nil

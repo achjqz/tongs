@@ -2,7 +2,7 @@ import AppKit
 import ScreenCaptureKit
 import SwiftUI
 
-/// What the panel shows. Built by `kv request`; never contains a value.
+/// What the panel shows. Built by `tongs request`; never contains a value.
 struct RequestInfo {
     var agent: String
     var name: String
@@ -197,12 +197,12 @@ struct DetailLabelStyle: LabelStyle {
     }
 }
 
-/// Liquid Glass on macOS 26+, system materials before that. `KV_UI_PREVIEW=legacy` forces the
+/// Liquid Glass on macOS 26+, system materials before that. `TONGS_UI_PREVIEW=legacy` forces the
 /// fallback so it can be checked on a newer Mac.
 enum UIStyle {
     static var glass: Bool {
         if #available(macOS 26, *) {
-            return !(ProcessInfo.processInfo.environment["KV_UI_PREVIEW"] ?? "").contains("legacy")
+            return !(ProcessInfo.processInfo.environment["TONGS_UI_PREVIEW"] ?? "").contains("legacy")
         }
         return false
     }
@@ -277,13 +277,13 @@ enum RequestWindow {
         window.backgroundColor = .clear
         window.hasShadow = true
         window.isMovableByWindowBackground = true
-        window.title = "kv"
+        window.title = "tongs"
         window.center()
         // The shadow is computed from the content's alpha; recompute once the glass card has drawn
         // so it follows the rounded corners instead of the window rectangle.
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { window.invalidateShadow() }
 
-        if let snapshot = ProcessInfo.processInfo.environment["KV_UI_PREVIEW"] {
+        if let snapshot = ProcessInfo.processInfo.environment["TONGS_UI_PREVIEW"] {
             preview(window, input: input, mode: snapshot)
         }
 
@@ -303,7 +303,7 @@ enum RequestWindow {
         return UI.Entry(value: input.value, global: info.scopeProject == nil || input.global)
     }
 
-    /// Development aid: `KV_UI_PREVIEW=filled,dark,snap=/tmp/x.png` pre-fills a fake value, forces an
+    /// Development aid: `TONGS_UI_PREVIEW=filled,dark,snap=/tmp/x.png` pre-fills a fake value, forces an
     /// appearance, and writes a capture of the panel (a process may capture its own windows
     /// without Screen Recording permission), then exits.
     static func preview(_ window: NSWindow, input: SecretInput, mode: String) {
@@ -317,7 +317,7 @@ enum RequestWindow {
                 do {
                     let content = try await SCShareableContent.currentProcess
                     guard let w = content.windows.first(where: { $0.windowID == CGWindowID(window.windowNumber) }) else {
-                        throw KVError("own window not found")
+                        throw TongsError("own window not found")
                     }
                     let config = SCStreamConfiguration()
                     config.width = Int(window.frame.width * 2)

@@ -1,9 +1,9 @@
 import CryptoKit
 import Foundation
-import KVCore
+import TongsCore
 import Security
 
-struct KVError: Error, CustomStringConvertible {
+struct TongsError: Error, CustomStringConvertible {
     let description: String
     init(_ message: String) { description = message }
 }
@@ -18,12 +18,12 @@ struct SecretInfo {
 /// The item ACL trusts only the binary that created it, so `security find-generic-password -w`
 /// from anything else triggers a macOS password prompt instead of returning the value.
 enum Store {
-    static let grantKeyAccount = "__kv_grant_key__"
+    static let grantKeyAccount = "__tongs_grant_key__"
 
-    /// Tests may point at a throwaway service, but only inside kv's own namespace.
+    /// Tests may point at a throwaway service, but only inside tongs's own namespace.
     static var service: String {
-        if let s = ProcessInfo.processInfo.environment["KV_SERVICE"], s.hasPrefix("dev.kv.") { return s }
-        return "dev.kv.secrets"
+        if let s = ProcessInfo.processInfo.environment["TONGS_SERVICE"], s.hasPrefix("dev.tongs.") { return s }
+        return "dev.tongs.secrets"
     }
 
     static func query(_ name: String? = nil) -> [String: Any] {
@@ -45,10 +45,10 @@ enum Store {
         var status = SecItemUpdate(query(name) as CFDictionary, attrs as CFDictionary)
         if status == errSecItemNotFound {
             var add = query(name).merging(attrs) { $1 }
-            add[kSecAttrLabel as String] = "kv: \(name)"
+            add[kSecAttrLabel as String] = "tongs: \(name)"
             status = SecItemAdd(add as CFDictionary, nil)
         }
-        guard status == errSecSuccess else { throw KVError("cannot store \(name): \(message(status))") }
+        guard status == errSecSuccess else { throw TongsError("cannot store \(name): \(message(status))") }
     }
 
     static func exists(_ name: String) -> Bool {
@@ -64,7 +64,7 @@ enum Store {
         let status = SecItemCopyMatching(q as CFDictionary, &result)
         if status == errSecItemNotFound { return [] }
         guard status == errSecSuccess, let items = result as? [[String: Any]] else {
-            throw KVError("cannot list secrets: \(message(status))")
+            throw TongsError("cannot list secrets: \(message(status))")
         }
         return items.compactMap { item -> SecretInfo? in
             guard let account = item[kSecAttrAccount as String] as? String, account != grantKeyAccount,
@@ -80,23 +80,23 @@ enum Store {
         q[kSecReturnData as String] = true
         var result: CFTypeRef?
         let status = SecItemCopyMatching(q as CFDictionary, &result)
-        if status == errSecItemNotFound { throw KVError("no secret named \(name) (see `kv ls`, or `kv request \(name)`)") }
+        if status == errSecItemNotFound { throw TongsError("no secret named \(name) (see `tongs ls`, or `tongs request \(name)`)") }
         guard status == errSecSuccess, let data = result as? Data else {
-            throw KVError("cannot read \(name): \(message(status))")
+            throw TongsError("cannot read \(name): \(message(status))")
         }
         return data
     }
 
     static func delete(_ name: String) throws {
         let status = SecItemDelete(query(name) as CFDictionary)
-        guard status == errSecSuccess else { throw KVError("cannot delete \(name): \(message(status))") }
+        guard status == errSecSuccess else { throw TongsError("cannot delete \(name): \(message(status))") }
     }
 
     /// HMAC key for the grant file, created on first use and never shown.
     static func grantKey() throws -> SymmetricKey {
         if let data = try? get(grantKeyAccount) { return SymmetricKey(data: data) }
         let key = SymmetricKey(size: .bits256)
-        try set(grantKeyAccount, value: key.withUnsafeBytes { Data($0) }, desc: "kv internal: signs approvals")
+        try set(grantKeyAccount, value: key.withUnsafeBytes { Data($0) }, desc: "tongs internal: signs approvals")
         return key
     }
 }

@@ -1,6 +1,6 @@
 import Darwin
 import Foundation
-import KVCore
+import TongsCore
 
 /// Who is asking (best effort, display and grant scoping only) and for which project.
 struct Caller {
@@ -56,7 +56,7 @@ struct Caller {
 enum Paths {
     static var stateDir: URL {
         FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent("Library/Application Support/kv", isDirectory: true)
+            .appendingPathComponent("Library/Application Support/tongs", isDirectory: true)
     }
     static var grants: URL { stateDir.appendingPathComponent("grants.json") }
     static var log: URL { stateDir.appendingPathComponent("log.jsonl") }
@@ -92,5 +92,5 @@ enum ActivityLog {
 }
 
 func warn(_ s: String) {
-    FileHandle.standardError.write(Data("kv: \(s)\n".utf8))
+    FileHandle.standardError.write(Data("tongs: \(s)\n".utf8))
 }

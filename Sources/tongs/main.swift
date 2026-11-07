@@ -1,25 +1,25 @@
 import AppKit
 import Foundation
-import KVCore
+import TongsCore
 
 let usage = """
-kv — secrets your AI agents can use without seeing
+tongs — secrets your AI agents can use without seeing
 
 Names are environment-variable style. A secret is either global (NAME) or belongs to
 the current git project (<project>/NAME); NAME resolves to the project one first.
 
-  kv ls [--all] [--json]                 secrets usable here (never values); --all: every project
-  kv run NAME... -- CMD...               run CMD with each NAME in its environment; output is scrubbed
-  kv request NAME [--why T] [--url U] [--global]
+  tongs ls [--all] [--json]                 secrets usable here (never values); --all: every project
+  tongs run NAME... -- CMD...               run CMD with each NAME in its environment; output is scrubbed
+  tongs request NAME [--why T] [--url U] [--global]
                                          ask the human for a secret in a native dialog
-  kv add NAME [--desc T] [--global]      store a secret yourself (hidden prompt, or stdin)
-  kv rm NAME                             delete a secret (asks for Touch ID)
-  kv grants                              show active approvals
-  kv revoke [NAME] [--agent A]           drop approvals
-  kv log [-n N]                          recent activity
-  kv doctor                              check Keychain / Touch ID / dialog access from here
-  kv setup claude|codex [--apply]        install the guard hook and agent instructions
-  kv hook                                PreToolUse guard (reads hook JSON on stdin)
+  tongs add NAME [--desc T] [--global]      store a secret yourself (hidden prompt, or stdin)
+  tongs rm NAME                             delete a secret (asks for Touch ID)
+  tongs grants                              show active approvals
+  tongs revoke [NAME] [--agent A]           drop approvals
+  tongs log [-n N]                          recent activity
+  tongs doctor                              check Keychain / Touch ID / dialog access from here
+  tongs setup claude|codex [--apply]        install the guard hook and agent instructions
+  tongs hook                                PreToolUse guard (reads hook JSON on stdin)
 """
 
 let grantTTL: TimeInterval = 12 * 3600
@@ -79,7 +79,8 @@ func grantBook() -> GrantBook {
 }
 
 func shortCommand(_ argv: [String]) -> String {
-    let s = argv.joined(separator: " ")
+    let s = argv.joined(separator: " ").split(whereSeparator: \.isNewline).map { $0.trimmingCharacters(in: .whitespaces) }
+        .filter { !$0.isEmpty }.joined(separator: " ⏎ ")
     return s.count > 60 ? String(s.prefix(57)) + "…" : s
 }
 
@@ -87,7 +88,7 @@ func clip(_ s: String, _ n: Int) -> String {
     s.count > n ? String(s.prefix(n - 1)) + "…" : s
 }
 
-/// The Touch ID sheet only shows a line or two after "“kv”正在尝试", so keep it to who gets what.
+/// The Touch ID sheet only shows a line or two after "“tongs”正在尝试", so keep it to who gets what.
 /// The full context goes to stderr and the activity log.
 func approvalReason(_ keys: [KeyName], caller: Caller) -> String {
     let what = keys.count == 1 ? keys[0].key : "\(keys[0].key) 等 \(keys.count) 项"
@@ -121,7 +122,7 @@ func cmdList(_ args: ArraySlice<String>) {
         return
     }
     if items.isEmpty {
-        print("(no secrets here yet — `kv request NAME --why ...` or `kv add NAME`)")
+        print("(no secrets here yet — `tongs request NAME --why ...` or `tongs add NAME`)")
         return
     }
     let nameWidth = max(items.map { (opts["--all"] != nil ? $0.id.key : $0.id.name).count }.max() ?? 0, 4)
@@ -138,7 +139,7 @@ func cmdList(_ args: ArraySlice<String>) {
 
 func cmdAdd(_ args: ArraySlice<String>) {
     let (pos, opts) = parseOptions(args, flags: ["--desc"], switches: ["--global"])
-    guard pos.count == 1 else { fail("usage: kv add NAME [--desc TEXT] [--global]") }
+    guard pos.count == 1 else { fail("usage: tongs add NAME [--desc TEXT] [--global]") }
     let caller = Caller.current()
     var id = parseKey(pos[0])
     if id.scope == nil, opts["--global"] == nil, let scope = caller.scope {
@@ -161,7 +162,7 @@ func cmdAdd(_ args: ArraySlice<String>) {
 
 func cmdRequest(_ args: ArraySlice<String>) {
     let (pos, opts) = parseOptions(args, flags: ["--why", "--url", "--desc"], switches: ["--global"])
-    guard pos.count == 1 else { fail("usage: kv request NAME [--why TEXT] [--url URL] [--desc TEXT] [--global]") }
+    guard pos.count == 1 else { fail("usage: tongs request NAME [--why TEXT] [--url URL] [--desc TEXT] [--global]") }
     let caller = Caller.current()
     let asked = parseKey(pos[0])
     let why = opts["--why"]
@@ -186,21 +187,21 @@ func cmdRequest(_ args: ArraySlice<String>) {
     do { try Store.set(id.key, value: Data(entry.value.utf8), desc: opts["--desc"] ?? why) } catch { fail("\(error)") }
     ActivityLog.record("request", caller: caller, secrets: [id.key])
     let shape = describeShape(entry.value).map { ", looks like a \($0)" } ?? ""
-    print("stored \(id.key) (\(scopeLabel(id)), \(entry.value.count) chars\(shape)). Use it with: kv run \(id.name) -- <command>")
+    print("stored \(id.key) (\(scopeLabel(id)), \(entry.value.count) chars\(shape)). Use it with: tongs run \(id.name) -- <command>")
 }
 
 func cmdRun(_ args: ArraySlice<String>) {
-    guard let sep = args.firstIndex(of: "--") else { fail("usage: kv run NAME... -- CMD...") }
+    guard let sep = args.firstIndex(of: "--") else { fail("usage: tongs run NAME... -- CMD...") }
     let asked = args[args.startIndex..<sep].map(parseKey)
     let argv = Array(args[(sep + 1)...])
-    guard !asked.isEmpty, !argv.isEmpty else { fail("usage: kv run NAME... -- CMD...") }
+    guard !asked.isEmpty, !argv.isEmpty else { fail("usage: tongs run NAME... -- CMD...") }
     guard Set(asked.map(\.name)).count == asked.count else { fail("each environment variable name can only be given once") }
 
     let caller = Caller.current()
     var keys: [KeyName] = []
     for k in asked {
         guard let r = resolve(k, for: caller) else {
-            fail("no secret \(k.key) for \(caller.projectName) (see `kv ls`). Ask the user with: kv request \(k.name) --why \"...\"")
+            fail("no secret \(k.key) for \(caller.projectName) (see `tongs ls`). Ask the user with: tongs request \(k.name) --why \"...\"")
         }
         keys.append(r)
     }
@@ -243,7 +244,7 @@ func cmdRun(_ args: ArraySlice<String>) {
 }
 
 func cmdRemove(_ args: ArraySlice<String>) {
-    guard args.count == 1, let arg = args.first else { fail("usage: kv rm NAME") }
+    guard args.count == 1, let arg = args.first else { fail("usage: tongs rm NAME") }
     let caller = Caller.current()
     guard let id = resolve(parseKey(arg), for: caller) else { fail("no secret \(arg) for \(caller.projectName)") }
     do {
@@ -269,7 +270,7 @@ func cmdGrants() {
 
 func cmdRevoke(_ args: ArraySlice<String>) {
     let (pos, opts) = parseOptions(args, flags: ["--agent"])
-    guard pos.count <= 1 else { fail("usage: kv revoke [NAME] [--agent AGENT]") }
+    guard pos.count <= 1 else { fail("usage: tongs revoke [NAME] [--agent AGENT]") }
     var secret = pos.first
     if let s = secret, let r = resolve(parseKey(s), for: .current()) { secret = r.key }
     do {
@@ -315,7 +316,7 @@ func cmdDoctor() {
     print("caller: \(caller.agent), project \(caller.project), scope \(caller.scope ?? "(none: global only)")")
     print("service: \(Store.service)")
 
-    let probe = "__kv_doctor__"
+    let probe = "__tongs_doctor__"
     do {
         try Store.set(probe, value: Data("probe".utf8), desc: nil)
         let back = try Store.get(probe)
@@ -347,9 +348,9 @@ func cmdDoctor() {
     do {
         try p.run()
         p.waitUntilExit()
-        row(p.terminationStatus == 0, "native dialog (kv request) can be shown", p.terminationStatus == 0 ? "" : "exit \(p.terminationStatus)")
+        row(p.terminationStatus == 0, "native dialog (tongs request) can be shown", p.terminationStatus == 0 ? "" : "exit \(p.terminationStatus)")
     } catch {
-        row(false, "native dialog (kv request) can be shown", error.localizedDescription)
+        row(false, "native dialog (tongs request) can be shown", error.localizedDescription)
     }
 }
 

@@ -43,7 +43,7 @@ public struct GrantBook {
 
     public func load(now: Date = Date()) -> [Grant] {
         guard let data = try? Data(contentsOf: url),
-              let all = try? JSONDecoder.kv.decode([Grant].self, from: data) else { return [] }
+              let all = try? JSONDecoder.tongs.decode([Grant].self, from: data) else { return [] }
         return all.filter { isValid($0, now: now) }
     }
 
@@ -74,12 +74,12 @@ public struct GrantBook {
 
     func save(_ grants: [Grant]) throws {
         try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
-        try JSONEncoder.kv.encode(grants).write(to: url, options: .atomic)
+        try JSONEncoder.tongs.encode(grants).write(to: url, options: .atomic)
     }
 }
 
 extension JSONEncoder {
-    public static var kv: JSONEncoder {
+    public static var tongs: JSONEncoder {
         let e = JSONEncoder()
         e.dateEncodingStrategy = .iso8601
         e.outputFormatting = [.prettyPrinted, .sortedKeys]
@@ -88,7 +88,7 @@ extension JSONEncoder {
 }
 
 extension JSONDecoder {
-    public static var kv: JSONDecoder {
+    public static var tongs: JSONDecoder {
         let d = JSONDecoder()
         d.dateDecodingStrategy = .iso8601
         return d
