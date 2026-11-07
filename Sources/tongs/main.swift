@@ -155,6 +155,16 @@ func cmdAdd(_ args: ArraySlice<String>) {
     }
     value = value.trimmingCharacters(in: .newlines)
     guard !value.isEmpty else { fail("empty value, nothing stored") }
+    // Whoever runs `add` chooses the value, so replacing a secret (or shadowing a global one
+    // with a project one) would let an agent swap in its own. Those need the user.
+    let shadows = id.scope != nil && Store.exists(id.name)
+    if Store.exists(id.key) || shadows {
+        let reason = shadows && !Store.exists(id.key) ? "用项目密钥 \(id.key) 覆盖全局 \(id.name)" : "替换密钥 \(id.key)"
+        do { try UI.authenticate(reason) } catch {
+            ActivityLog.record("add-denied", caller: caller, secrets: [id.key])
+            fail("\(error)")
+        }
+    }
     do { try Store.set(id.key, value: Data(value.utf8), desc: opts["--desc"]) } catch { fail("\(error)") }
     ActivityLog.record("add", caller: caller, secrets: [id.key])
     print("stored \(id.key) (\(scopeLabel(id)))")

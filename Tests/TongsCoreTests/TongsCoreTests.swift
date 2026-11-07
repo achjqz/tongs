@@ -110,14 +110,61 @@ let token = "ghp_abcDEF1234567890xyz"
     #expect(Project.scope(forRoot: "/x/.dotfiles") == "p.dotfiles")
 }
 
-@Test func guardBlocksKeychainReads() {
+func bash(_ command: String) -> [Guard.Finding] {
+    Guard.findings(toolName: "Bash", input: ["command": command])
+}
+
+@Test(arguments: [
+    ("security find-generic-password -s dev.tongs.secrets -a GH -w", Guard.Finding.read),
+    ("security dump-keychain -d", .read),
+    ("/usr/bin/security -q find-internet-password -g", .read),
+    ("FOO=1 sudo -u me security find-generic-password -w", .read),
+    ("cd /tmp && security find-generic-password -w | pbcopy", .read),
+    ("echo $(security find-generic-password -w)", .read),
+    ("echo \"token: $(security find-generic-password -w)\"", .read),
+    ("x=`security find-generic-password -w`", .read),
+    ("bash -lc 'security find-generic-password -w'", .read),
+    ("eval \"security find-generic-password -w\"", .read),
+    ("tongs run GH -- security find-generic-password -s x -w", .read),
+    ("cat <<EOF\nvalue: $(security find-generic-password -w)\nEOF", .read),
+    ("python3 -c \"import os; os.system('security find-generic-password -w')\"", .read),
+    ("osascript -e 'do shell script \"security dump-keychain\"'", .read),
+    ("security delete-generic-password -s dev.tongs.secrets -a GH", .modify),
+    ("security add-generic-password -U -s dev.tongs.secrets -a GH -w evil", .modify),
+    ("security set-generic-password-partition-list -S apple-tool: -s dev.tongs.secrets", .modify),
+    ("while security delete-generic-password -s dev.tongs.secrets; do :; done", .modify),
+    ("cp ~/Library/Keychains/login.keychain-db /tmp/k", .keychainFiles),
+])
+func guardBlocks(command: String, expected: Guard.Finding) {
+    #expect(bash(command).contains(expected), "\(command)")
+}
+
+@Test(arguments: [
+    "tongs run GH -- gh pr list",
+    "git log --grep security",
+    "grep -rn 'find-generic-password' Sources",
+    "echo \"security find-generic-password is blocked\"",
+    "printf '%s\\n' ~/Library/Keychains",
+    "git commit -m 'block security delete-generic-password'",
+    "cat > notes.md <<'EOF'\nUse security find-generic-password -w? No.\nKeychain files live in ~/Library/Keychains.\nEOF",
+    "cat > notes.md <<EOF\nIt's fine to mention security dump-keychain in prose.\nEOF",
+    "security find-certificate -c 'Apple Development'",
+    "security list-keychains",
+    "ls -la # security dump-keychain",
+    "make test 2>&1 | tail",
+])
+func guardAllows(command: String) {
+    #expect(bash(command).isEmpty, "\(command)")
+}
+
+@Test func guardToolShapes() {
     func check(_ input: [String: Any]) -> String? {
         Guard.check(hookInput: try! JSONSerialization.data(withJSONObject: input))
     }
-    #expect(check(["tool_name": "Bash", "tool_input": ["command": "security find-generic-password -s dev.tongs.secrets -a GH -w"]]) != nil)
-    #expect(check(["tool_name": "Bash", "tool_input": ["command": "security dump-keychain -d"]]) != nil)
     #expect(check(["tool_name": "Read", "tool_input": ["file_path": "/Users/x/Library/Keychains/login.keychain-db"]]) != nil)
-    #expect(check(["tool_name": "exec_command", "tool_input": ["cmd": ["bash", "-lc", "security find-internet-password -g"]]]) != nil)
-    #expect(check(["tool_name": "Bash", "tool_input": ["command": "tongs run GH -- gh pr list"]]) == nil)
-    #expect(check(["tool_name": "Bash", "tool_input": ["command": "git log --grep security"]]) == nil)
+    #expect(check(["tool_name": "Glob", "tool_input": ["pattern": "~/Library/Keychains/**"]]) != nil)
+    #expect(check(["tool_name": "Grep", "tool_input": ["pattern": "Library/Keychains", "path": "."]]) == nil)
+    #expect(check(["tool_name": "exec_command", "tool_input": ["cmd": ["bash", "-lc", "security delete-internet-password -s x"]]]) != nil)
+    #expect(check(["tool_name": "exec_command", "tool_input": ["cmd": ["security", "find-generic-password", "-w"]]]) != nil)
+    #expect(check(["tool_name": "Write", "tool_input": ["file_path": "notes.md", "content": "security dump-keychain"]]) == nil)
 }

@@ -17,8 +17,9 @@ It is not a defense against malware already running as your user, or against an 
 | Values are entered in a native panel (`tongs request`), never in the chat | The human pasting a key into the transcript |
 | `tongs run` injects values as environment variables, never as arguments | Values in the process table and shell history |
 | Output scrubbing of the raw value, its URL-encoded form, and Base64 at all three byte alignments | Accidental echoes: `curl -v` headers (including Basic auth), stack traces, libraries logging their config |
-| Keychain item ACLs trust only the tongs binary that created them | Other programs, including an agent calling `security find-generic-password -w`, read silently: macOS asks for the login password instead |
-| PreToolUse guard hook (Claude Code, Codex) | Agents reaching around tongs to read the Keychain or its database files |
+| Keychain item ACLs trust only the tongs binary that created them | Other programs, including an agent calling `security find-generic-password -w`, can't read silently: macOS asks for the login password instead |
+| PreToolUse guard hook (Claude Code, Codex) | Agents reaching around tongs to read, add, overwrite or delete Keychain items, change their access lists, or touch the Keychain database files. The ACL above guards reads only; in the login keychain, deleting or replacing an item needs no prompt, so without the guard an agent could swap in a value of its choosing |
+| `tongs add` asks for Touch ID when it would replace a secret or shadow a global one with a project one | The same swap through tongs itself |
 | Touch ID approval per agent × project × secret, valid 12 hours | Silent first use of a secret in a new place |
 | Approvals are HMAC-signed with a key held in the Keychain | An agent forging approvals by editing `grants.json` (it can delete them, which only restricts it) |
 | Activity log of every request/run (names, project, command, exit code) | Use you didn't notice at the time |
@@ -26,6 +27,7 @@ It is not a defense against malware already running as your user, or against an 
 ### What it does not do
 
 - **A command that transforms the value before printing it bypasses scrubbing**, e.g. `sh -c 'echo "$X" | rev'`. So does a command that writes the value to a file. The Touch ID prompt shows the command, but once approved, other commands in the same project don't prompt again for 12 hours.
+- **The guard catches commands, not intent.** It parses shell input and follows `$(…)`, backticks, `sh -c`, `eval`, unquoted heredocs and wrappers like `sudo`/`env`, so text that only *mentions* a command passes. Code in other languages is matched by keywords. A script written to disk and then run, a compiled helper, or code that builds the command name at runtime gets past it. It keeps a well-meaning agent on the paved path, it is not a sandbox.
 - **`tongs run` runs outside the agent's sandbox.** The Codex rules installed by `tongs setup codex` make Codex ask before each `tongs run`, and that prompt is the real gate. Don't change it to `allow` unless you trust every command the agent might wrap.
 - **Agent identification is best effort.** It comes from the process tree and environment variables, and is used for display and approval grouping only. A process tongs can't identify is treated as "Terminal" and still needs approval.
 - **Local, same-user attackers are out of scope.** They can read the clipboard while you paste, inject input, or attach to processes.
