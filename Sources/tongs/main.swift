@@ -47,7 +47,7 @@ func resolve(_ k: KeyName, for caller: Caller) -> KeyName? {
 }
 
 func scopeLabel(_ k: KeyName) -> String {
-    k.scope.map { "项目 \($0)" } ?? "全局"
+    k.scope.map { tr("项目 \($0)", "project \($0)") } ?? tr("全局", "global")
 }
 
 /// Splits `--flag value` options from positional arguments.
@@ -88,12 +88,12 @@ func clip(_ s: String, _ n: Int) -> String {
     s.count > n ? String(s.prefix(n - 1)) + "…" : s
 }
 
-/// The Touch ID sheet only shows a line or two after "“tongs”正在尝试", so keep it to who gets what.
+/// The Touch ID sheet only shows a line or two after "“tongs” is trying to", so keep it to who gets what.
 /// The full context goes to stderr and the activity log.
 func approvalReason(_ keys: [KeyName], caller: Caller) -> String {
-    let what = keys.count == 1 ? keys[0].key : "\(keys[0].key) 等 \(keys.count) 项"
-    let place = keys.allSatisfy { $0.scope == nil } ? "（\(clip(caller.projectName, 12))）" : ""
-    return "向 \(caller.agent) 提供 \(what)\(place)"
+    let what = keys.count == 1 ? keys[0].key : tr("\(keys[0].key) 等 \(keys.count) 项", "\(keys[0].key) and \(keys.count - 1) more")
+    let place = keys.allSatisfy { $0.scope == nil } ? tr("（\(clip(caller.projectName, 12))）", " (\(clip(caller.projectName, 12)))") : ""
+    return tr("向 \(caller.agent) 提供 \(what)\(place)", "give \(caller.agent) \(what)\(place)")
 }
 
 // MARK: commands
@@ -132,7 +132,7 @@ func cmdList(_ args: ArraySlice<String>) {
         var line = name.padding(toLength: nameWidth + 2, withPad: " ", startingAt: 0)
             + scopeLabel(i.id).padding(toLength: scopeWidth + 2, withPad: " ", startingAt: 0)
             + i.desc
-        if shadowed(i) { line += "（此项目里被项目密钥覆盖）" }
+        if shadowed(i) { line += tr("（此项目里被项目密钥覆盖）", " (overridden here by the project secret)") }
         print(line)
     }
 }
@@ -159,7 +159,9 @@ func cmdAdd(_ args: ArraySlice<String>) {
     // with a project one) would let an agent swap in its own. Those need the user.
     let shadows = id.scope != nil && Store.exists(id.name)
     if Store.exists(id.key) || shadows {
-        let reason = shadows && !Store.exists(id.key) ? "用项目密钥 \(id.key) 覆盖全局 \(id.name)" : "替换密钥 \(id.key)"
+        let reason = shadows && !Store.exists(id.key) 
+            ? tr("用项目密钥 \(id.key) 覆盖全局 \(id.name)", "override the global \(id.name) with the project secret \(id.key)")
+            : tr("替换密钥 \(id.key)", "replace the secret \(id.key)")
         do { try UI.authenticate(reason) } catch {
             ActivityLog.record("add-denied", caller: caller, secrets: [id.key])
             fail("\(error)")
@@ -258,7 +260,7 @@ func cmdRemove(_ args: ArraySlice<String>) {
     let caller = Caller.current()
     guard let id = resolve(parseKey(arg), for: caller) else { fail("no secret \(arg) for \(caller.projectName)") }
     do {
-        try UI.authenticate("删除密钥 \(id.key)")
+        try UI.authenticate(tr("删除密钥 \(id.key)", "delete the secret \(id.key)"))
         try Store.delete(id.key)
         _ = try? grantBook().revoke(secret: id.key, agent: nil)
     } catch {

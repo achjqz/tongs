@@ -54,17 +54,17 @@ enum UI {
         let main = NSMenu()
         let appItem = NSMenuItem()
         let appMenu = NSMenu()
-        appMenu.addItem(withTitle: "退出 tongs", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        appMenu.addItem(withTitle: tr("退出 tongs", "Quit tongs"), action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         appItem.submenu = appMenu
         main.addItem(appItem)
 
         let editItem = NSMenuItem()
-        let edit = NSMenu(title: "编辑")
-        edit.addItem(withTitle: "撤销", action: Selector(("undo:")), keyEquivalent: "z")
+        let edit = NSMenu(title: tr("编辑", "Edit"))
+        edit.addItem(withTitle: tr("撤销", "Undo"), action: Selector(("undo:")), keyEquivalent: "z")
         edit.addItem(.separator())
-        edit.addItem(withTitle: "剪切", action: #selector(NSText.cut(_:)), keyEquivalent: "x")
-        edit.addItem(withTitle: "粘贴", action: #selector(NSText.paste(_:)), keyEquivalent: "v")
-        edit.addItem(withTitle: "全选", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
+        edit.addItem(withTitle: tr("剪切", "Cut"), action: #selector(NSText.cut(_:)), keyEquivalent: "x")
+        edit.addItem(withTitle: tr("粘贴", "Paste"), action: #selector(NSText.paste(_:)), keyEquivalent: "v")
+        edit.addItem(withTitle: tr("全选", "Select All"), action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
         editItem.submenu = edit
         main.addItem(editItem)
         return main
@@ -87,6 +87,7 @@ enum LAContextProbe {
 func describeShape(_ v: String) -> String? {
     let shapes: [(String, String)] = [
         ("github_pat_", "GitHub fine-grained token"), ("ghp_", "GitHub token"), ("gho_", "GitHub OAuth token"),
+        ("sk_live_", "Stripe live secret key"), ("sk_test_", "Stripe test secret key"), ("rk_live_", "Stripe restricted key"),
         ("sk-ant-", "Anthropic key"), ("sk-proj-", "OpenAI project key"), ("sk-", "OpenAI-style key"),
         ("AKIA", "AWS access key id"), ("xox", "Slack token"), ("glpat-", "GitLab token"), ("eyJ", "JWT"),
     ]

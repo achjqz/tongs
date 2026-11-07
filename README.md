@@ -22,6 +22,8 @@ $ tongs run STRIPE_SECRET_KEY -- sh -c 'curl -sv https://api.stripe.com/v1/balan
 - **Guard the side doors.** A PreToolUse hook for Claude Code and Codex blocks agents from reading the Keychain directly.
 - **Nothing resident.** There is no daemon and no menu bar app. Every prompt is raised by the CLI call that needs it.
 
+<p align="center"><img src="docs/panel-en.png" width="440" alt="The tongs request panel: Claude Code is asking for STRIPE_SECRET_KEY for project shop; the pasted value shows as dots with its length and kind"></p>
+
 ## Requirements
 
 macOS 15 or later. The request panel uses Liquid Glass on macOS 26+ and system materials on 15.
@@ -83,7 +85,7 @@ TONGS_SERVICE=dev.tongs.test tongs …          # keep test data out of your rea
 TONGS_UI_PREVIEW="filled,dark,snap=/tmp/p.png" tongs request DEMO --why preview
 ```
 
-`TONGS_UI_PREVIEW` pre-fills the panel, forces `light`/`dark`, can force the macOS 15 look with `legacy`, and with `snap=` writes a capture of the panel and exits. A process may capture its own windows without Screen Recording permission, but the capture can't see the desktop behind the glass.
+The UI follows your preferred language (Chinese or English); `TONGS_LANG=zh|en` overrides it. `TONGS_UI_PREVIEW` pre-fills the panel, forces `light`/`dark`, can force the macOS 15 look with `legacy`, and with `snap=` writes a capture of the panel and exits without taking focus. A process may capture its own windows without Screen Recording permission, but the capture can't see the desktop behind the glass.
 
 Builds from source are ad-hoc signed and the signature changes with every build. The Keychain then treats the new binary as a different app and asks for your login password once per secret; choose **Always Allow**. A Developer ID–signed release won't have this problem.
 

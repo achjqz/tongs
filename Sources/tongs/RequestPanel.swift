@@ -45,7 +45,7 @@ final class SecretInput: ObservableObject {
 
     var summary: String {
         let kind = describeShape(value).map { " · \($0)" } ?? ""
-        return "\(value.count) 个字符\(kind)"
+        return tr("\(value.count) 个字符\(kind)", "\(value.count) characters\(kind)")
     }
 }
 
@@ -82,7 +82,7 @@ struct RequestPanel: View {
                     in: .rect(cornerRadius: 14, style: .continuous))
                 .shadow(color: .orange.opacity(0.35), radius: 8, y: 3)
             VStack(alignment: .leading, spacing: 5) {
-                Text("\(info.agent) 请求一个密钥")
+                Text(tr("\(info.agent) 请求一个密钥", "\(info.agent) is asking for a secret"))
                     .font(.system(size: 17, weight: .semibold))
                 Text(info.name)
                     .font(.system(size: 13, weight: .medium, design: .monospaced))
@@ -96,10 +96,11 @@ struct RequestPanel: View {
 
     private var details: some View {
         VStack(alignment: .leading, spacing: 7) {
-            Label("项目 \(info.project)", systemImage: "folder")
+            Label(tr("项目 \(info.project)", "Project \(info.project)"), systemImage: "folder")
             if let why = info.why { Label(why, systemImage: "text.bubble") }
             if !info.replaces.isEmpty {
-                Label("已有 \(info.replaces.joined(separator: "、"))，同一范围下保存会替换", systemImage: "exclamationmark.triangle.fill")
+                Label(tr("已有 \(info.replaces.joined(separator: "、"))，同一范围下保存会替换",
+                         "Saving replaces \(info.replaces.joined(separator: ", ")) in the same scope"), systemImage: "exclamationmark.triangle.fill")
                     .foregroundStyle(.orange)
             }
         }
@@ -113,7 +114,7 @@ struct RequestPanel: View {
             Image(systemName: input.shown.isEmpty ? "lock" : "lock.fill")
                 .foregroundStyle(input.shown.isEmpty ? Color.secondary : Color.accentColor)
                 .frame(width: 16)
-            TextField("粘贴密钥",
+            TextField(tr("粘贴密钥", "Paste the secret"),
                       text: Binding(get: { input.shown }, set: { input.update($0) }))
                 .textFieldStyle(.plain)
                 .font(.system(size: 14, design: .monospaced))
@@ -128,7 +129,7 @@ struct RequestPanel: View {
                     Image(systemName: "xmark.circle.fill").foregroundStyle(.tertiary)
                 }
                 .buttonStyle(.plain)
-                .help("清空")
+                .help(tr("清空", "Clear"))
             }
         }
         .padding(.horizontal, 14)
@@ -143,14 +144,14 @@ struct RequestPanel: View {
 
     private func scopePicker(_ project: String) -> some View {
         HStack {
-            Label("可用范围", systemImage: "square.stack.3d.up")
+            Label(tr("可用范围", "Available to"), systemImage: "square.stack.3d.up")
                 .font(.system(size: 13))
                 .foregroundStyle(.secondary)
                 .labelStyle(DetailLabelStyle())
             Spacer()
-            Picker("可用范围", selection: $input.global) {
-                Text("仅项目 \(project)").tag(false)
-                Text("所有项目").tag(true)
+            Picker(tr("可用范围", "Available to"), selection: $input.global) {
+                Text(tr("仅项目 \(project)", "Project \(project) only")).tag(false)
+                Text(tr("所有项目", "All projects")).tag(true)
             }
             .pickerStyle(.segmented)
             .labelsHidden()
@@ -166,22 +167,23 @@ struct RequestPanel: View {
                     Button {
                         NSWorkspace.shared.open(url)
                     } label: {
-                        Label("去获取", systemImage: "arrow.up.right")
+                        Label(tr("去获取", "Get one"), systemImage: "arrow.up.right")
                     }
                     .secondaryButtonStyle()
                     .help(url.absoluteString)
                 }
                 Spacer()
-                Button("取消", action: onCancel)
+                Button(tr("取消", "Cancel"), action: onCancel)
                     .secondaryButtonStyle()
                     .keyboardShortcut(.cancelAction)
-                Button("保存", action: onSave)
+                Button(tr("保存", "Save"), action: onSave)
                     .primaryButtonStyle()
                     .keyboardShortcut(.defaultAction)
                     .disabled(input.value.isEmpty)
             }
             .controlSize(.large)
-            Label("只存入这台 Mac 的钥匙串，\(info.agent) 拿不到值", systemImage: "lock.shield")
+            Label(tr("只存入这台 Mac 的钥匙串，\(info.agent) 拿不到值",
+                     "Stored only in this Mac's Keychain. \(info.agent) never sees the value."), systemImage: "lock.shield")
                 .font(.system(size: 11))
                 .foregroundStyle(.tertiary)
         }
@@ -252,7 +254,11 @@ enum RequestWindow {
         let panel = RequestPanel(info: info, input: input,
                                  onSave: { app.stopModal(withCode: .OK) },
                                  onCancel: { app.stopModal(withCode: .cancel) })
-        let host = NSHostingView(rootView: panel)
+        // Previews are captured without taking focus from the user, so draw controls as active.
+        let previewing = ProcessInfo.processInfo.environment["TONGS_UI_PREVIEW"] != nil
+        let host = NSHostingView(rootView: previewing
+                                 ? AnyView(panel.environment(\.controlActiveState, .key))
+                                 : AnyView(panel))
         if UIStyle.glass {
             window.contentView = host
         } else {
@@ -281,10 +287,19 @@ enum RequestWindow {
         window.center()
         // The shadow is computed from the content's alpha; recompute once the glass card has drawn
         // so it follows the rounded corners instead of the window rectangle.
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { window.invalidateShadow() }
+        for delay in [0.1, 0.5] {
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) { window.invalidateShadow() }
+        }
 
         if let snapshot = ProcessInfo.processInfo.environment["TONGS_UI_PREVIEW"] {
             preview(window, input: input, mode: snapshot)
+        }
+        if let mode = ProcessInfo.processInfo.environment["TONGS_UI_PREVIEW"], mode.contains("snap=") {
+            // Never take focus (or the user's keystrokes) just to take a picture; preview() exits
+            // once the capture is written.
+            app.setActivationPolicy(.accessory)
+            window.orderFrontRegardless()
+            app.run()
         }
 
         // Cooperative activation: comes forward unless the user is busy in another app,
@@ -307,7 +322,7 @@ enum RequestWindow {
     /// appearance, and writes a capture of the panel (a process may capture its own windows
     /// without Screen Recording permission), then exits.
     static func preview(_ window: NSWindow, input: SecretInput, mode: String) {
-        if mode.contains("filled") { input.update("ghp_" + String(repeating: "x", count: 36)) }
+        if mode.contains("filled") { input.update("sk_live_" + String(repeating: "x", count: 99)) }
         if mode.contains("dark") { NSApp.appearance = NSAppearance(named: .darkAqua) }
         if mode.contains("light") { NSApp.appearance = NSAppearance(named: .aqua) }
         guard let snap = mode.split(separator: ",").first(where: { $0.hasPrefix("snap=") })?.dropFirst(5) else { return }
@@ -323,7 +338,7 @@ enum RequestWindow {
                     config.width = Int(window.frame.width * 2)
                     config.height = Int(window.frame.height * 2)
                     config.showsCursor = false
-                    config.ignoreShadowsSingleWindow = false
+                    config.ignoreShadowsSingleWindow = true
                     let image = try await SCScreenshotManager.captureImage(
                         contentFilter: SCContentFilter(desktopIndependentWindow: w), configuration: config)
                     let rep = NSBitmapImageRep(cgImage: image)

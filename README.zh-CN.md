@@ -22,6 +22,8 @@ $ tongs run STRIPE_SECRET_KEY -- sh -c 'curl -sv https://api.stripe.com/v1/balan
 - **堵住旁路**：给 Claude Code 和 Codex 装一个 PreToolUse hook，不让 agent 直接读钥匙串。
 - **没有常驻进程**：没有后台服务，也没有菜单栏图标，弹窗都由当次 CLI 调用临时拉起。
 
+<p align="center"><img src="docs/panel-zh.png" width="440" alt="tongs 录入面板：Claude Code 为项目 shop 请求 STRIPE_SECRET_KEY，粘贴的值只显示为圆点、长度和类型"></p>
+
 ## 系统要求
 
 macOS 15 及以上。录入面板在 macOS 26+ 使用 Liquid Glass，在 15 上使用系统毛玻璃。
@@ -83,11 +85,13 @@ TONGS_SERVICE=dev.tongs.test tongs …          # 测试数据和真实密钥分
 TONGS_UI_PREVIEW="filled,dark,snap=/tmp/p.png" tongs request DEMO --why preview
 ```
 
+界面语言跟随系统首选语言（中文或英文），`TONGS_LANG=zh|en` 可以强制指定。
+
 `TONGS_UI_PREVIEW` 有这些选项：
 - `filled`：预填一个假值；
 - `light` / `dark`：强制深浅色；
 - `legacy`：强制显示 macOS 15 的样式；
-- `snap=`：把面板截图存到指定路径后退出。进程截自己的窗口不需要录屏权限，但截不到玻璃后面的桌面。
+- `snap=`：把面板截图存到指定路径后退出，全程不抢焦点。进程截自己的窗口不需要录屏权限，但截不到玻璃后面的桌面。
 
 从源码构建的是 ad-hoc 签名，每次构建签名都会变。钥匙串会把新版本当成另一个程序，每个密钥都会问一次登录密码，选"始终允许"就行。用 Developer ID 签名的正式版本不会有这个问题。
 
