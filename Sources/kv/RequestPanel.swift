@@ -66,7 +66,7 @@ struct RequestPanel: View {
         }
         .padding(24)
         .frame(width: 440)
-        .glassEffect(.regular, in: .rect(cornerRadius: 30))
+        .cardBackground(cornerRadius: RequestWindow.cornerRadius)
         .onAppear { DispatchQueue.main.async { fieldFocused = true } }
     }
 
@@ -113,7 +113,7 @@ struct RequestPanel: View {
             Image(systemName: input.shown.isEmpty ? "lock" : "lock.fill")
                 .foregroundStyle(input.shown.isEmpty ? Color.secondary : Color.accentColor)
                 .frame(width: 16)
-            TextField("粘贴密钥 · ⌘V 或剪贴板历史 ⌥V",
+            TextField("粘贴密钥",
                       text: Binding(get: { input.shown }, set: { input.update($0) }))
                 .textFieldStyle(.plain)
                 .font(.system(size: 14, design: .monospaced))
@@ -168,15 +168,15 @@ struct RequestPanel: View {
                     } label: {
                         Label("去获取", systemImage: "arrow.up.right")
                     }
-                    .buttonStyle(.glass)
+                    .secondaryButtonStyle()
                     .help(url.absoluteString)
                 }
                 Spacer()
                 Button("取消", action: onCancel)
-                    .buttonStyle(.glass)
+                    .secondaryButtonStyle()
                     .keyboardShortcut(.cancelAction)
                 Button("保存", action: onSave)
-                    .buttonStyle(.glassProminent)
+                    .primaryButtonStyle()
                     .keyboardShortcut(.defaultAction)
                     .disabled(input.value.isEmpty)
             }
@@ -197,6 +197,37 @@ struct DetailLabelStyle: LabelStyle {
     }
 }
 
+/// Liquid Glass on macOS 26+, system materials before that. `KV_UI_PREVIEW=legacy` forces the
+/// fallback so it can be checked on a newer Mac.
+enum UIStyle {
+    static var glass: Bool {
+        if #available(macOS 26, *) {
+            return !(ProcessInfo.processInfo.environment["KV_UI_PREVIEW"] ?? "").contains("legacy")
+        }
+        return false
+    }
+}
+
+extension View {
+    /// The card itself. The fallback window already supplies the blur, so only an edge is drawn here.
+    @ViewBuilder func cardBackground(cornerRadius: CGFloat) -> some View {
+        if #available(macOS 26, *), UIStyle.glass {
+            glassEffect(.regular, in: .rect(cornerRadius: cornerRadius))
+        } else {
+            overlay(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                .strokeBorder(Color.primary.opacity(0.1), lineWidth: 1))
+        }
+    }
+
+    @ViewBuilder func primaryButtonStyle() -> some View {
+        if #available(macOS 26, *), UIStyle.glass { buttonStyle(.glassProminent) } else { buttonStyle(.borderedProminent) }
+    }
+
+    @ViewBuilder func secondaryButtonStyle() -> some View {
+        if #available(macOS 26, *), UIStyle.glass { buttonStyle(.glass) } else { buttonStyle(.bordered) }
+    }
+}
+
 /// Borderless so the glass card is the whole window; borderless windows refuse key status by default.
 final class GlassWindow: NSWindow {
     override var canBecomeKey: Bool { true }
@@ -204,6 +235,8 @@ final class GlassWindow: NSWindow {
 }
 
 enum RequestWindow {
+    static let cornerRadius: CGFloat = 30
+
     /// Shows the panel modally; returns the entry, or nil if cancelled.
     static func run(_ info: RequestInfo) -> UI.Entry? {
         let app = NSApplication.shared
@@ -220,7 +253,25 @@ enum RequestWindow {
                                  onSave: { app.stopModal(withCode: .OK) },
                                  onCancel: { app.stopModal(withCode: .cancel) })
         let host = NSHostingView(rootView: panel)
-        window.contentView = host
+        if UIStyle.glass {
+            window.contentView = host
+        } else {
+            // Before Liquid Glass: a behind-window blur, rounded like the card.
+            let blur = NSVisualEffectView()
+            blur.material = .popover
+            blur.blendingMode = .behindWindow
+            blur.state = .active
+            blur.maskImage = roundedMask(cornerRadius)
+            host.translatesAutoresizingMaskIntoConstraints = false
+            blur.addSubview(host)
+            NSLayoutConstraint.activate([
+                host.leadingAnchor.constraint(equalTo: blur.leadingAnchor),
+                host.trailingAnchor.constraint(equalTo: blur.trailingAnchor),
+                host.topAnchor.constraint(equalTo: blur.topAnchor),
+                host.bottomAnchor.constraint(equalTo: blur.bottomAnchor),
+            ])
+            window.contentView = blur
+        }
         window.setContentSize(host.fittingSize)
         window.isOpaque = false
         window.backgroundColor = .clear
@@ -285,6 +336,19 @@ enum RequestWindow {
                 exit(0)
             }
         }
+    }
+
+    /// A stretchable rounded-rect mask; the supported way to round a behind-window blur
+    /// (layer corner radius leaves the blur and the window shadow rectangular).
+    static func roundedMask(_ r: CGFloat) -> NSImage {
+        let image = NSImage(size: NSSize(width: r * 2 + 1, height: r * 2 + 1), flipped: false) { rect in
+            NSColor.black.setFill()
+            NSBezierPath(roundedRect: rect, xRadius: r, yRadius: r).fill()
+            return true
+        }
+        image.capInsets = NSEdgeInsets(top: r, left: r, bottom: r, right: r)
+        image.resizingMode = .stretch
+        return image
     }
 
     /// Dock icon while the panel is up: the same key glyph as the header.

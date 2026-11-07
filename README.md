@@ -4,7 +4,7 @@
 
 ## 构建与安装
 
-需要 macOS 26+（录入面板用 Liquid Glass）。
+需要 macOS 15+。录入面板在 macOS 26+ 用 Liquid Glass，在 15 上退回系统毛玻璃（`NSVisualEffectView`）和普通按钮，布局相同；`KV_UI_PREVIEW` 里加 `legacy` 可以在新系统上预览旧样式。
 
 ```bash
 swift build -c release

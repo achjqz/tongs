@@ -3,8 +3,8 @@ import PackageDescription
 
 let package = Package(
     name: "kv",
-    // macOS 26 for Liquid Glass in the request panel.
-    platforms: [.macOS(.v26)],
+    // The request panel uses Liquid Glass on macOS 26+ and falls back to system materials on 15.
+    platforms: [.macOS(.v15)],
     targets: [
         // Pure logic (scrubbing, grant signing) so it can be unit-tested without Keychain or AppKit.
         .target(name: "KVCore"),
