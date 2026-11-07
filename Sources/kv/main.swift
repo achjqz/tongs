@@ -173,14 +173,12 @@ func cmdRequest(_ args: ArraySlice<String>) {
 
     // The user picks the scope in the dialog unless the name already fixes it.
     let pickScope = asked.scope == nil ? caller.scope : nil
-    var info = "项目：\(caller.projectName)\n"
-    if let why { info += "用途：\(why)\n" }
     let existing = [pickScope.map { KeyName(scope: $0, name: asked.name) }, asked].compactMap { $0 }.filter { Store.exists($0.key) }
-    if !existing.isEmpty { info += "已存在：\(existing.map(\.key).joined(separator: "、"))，同一范围下保存会替换它。\n" }
-    info += "\n值只存入本机钥匙串，不会返回给 \(caller.agent)。"
+    let info = RequestInfo(agent: caller.agent, name: asked.key, project: caller.projectName, why: why, url: url,
+                           scopeProject: pickScope, defaultGlobal: opts["--global"] != nil,
+                           replaces: existing.map(\.key))
 
-    guard let entry = UI.askSecret(title: "\(caller.agent) 请求密钥 \(asked.name)", info: info, url: url,
-                                   project: pickScope, defaultGlobal: opts["--global"] != nil) else {
+    guard let entry = UI.askSecret(info) else {
         ActivityLog.record("request-declined", caller: caller, secrets: [asked.key])
         fail("the user declined to provide \(asked.name)")
     }

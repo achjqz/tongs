@@ -4,6 +4,8 @@
 
 ## 构建与安装
 
+需要 macOS 26+（录入面板用 Liquid Glass）。
+
 ```bash
 swift build -c release
 ln -sf "$PWD/.build/release/kv" ~/.local/bin/kv
@@ -29,6 +31,16 @@ kv setup codex    # ~/.codex/hooks.json + AGENTS.md 片段 + ~/.codex/rules/kv.r
 | `kv grants` / `kv revoke` | 查看 / 撤销授权 |
 | `kv log` | 活动记录（不含值） |
 | `kv hook` | 守卫：拦截 `security find-*-password`、`dump-keychain`、读 `Library/Keychains`；exit 2 拦截，Claude Code 和 Codex 通用 |
+
+## 录入面板
+
+`kv request` 弹出的是 SwiftUI 写的无边框玻璃卡片（`glassEffect`、`.glass` / `.glassProminent` 按钮、分段选择可用范围），跟随系统深浅色，可拖动。调外观时可以让面板截下自己（进程截取自己的窗口不需要录屏权限）：
+
+```bash
+KV_SERVICE=dev.kv.test KV_UI_PREVIEW="filled,dark,snap=/tmp/panel.png" kv request DEMO --why "预览"
+```
+
+自截图拍不到窗口后面的桌面，所以玻璃在截图里是平的灰色，真机上会透出并模糊背后的内容。
 
 ## 命名与作用范围
 
