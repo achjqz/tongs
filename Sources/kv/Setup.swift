@@ -8,10 +8,15 @@ enum Setup {
 
     API keys, tokens and passwords live in the macOS Keychain under `kv`. You never see a value; you use it by name.
 
-    - `kv ls` lists secret names and descriptions (never values).
+    - `kv ls` lists the secrets usable in the current project, with their scope and description (never values).
     - `kv run NAME [NAME...] -- <command>` runs the command with each NAME exported as an environment variable of the same name. Output is scrubbed: a value prints as ‹redacted:NAME›.
       Your shell expands `$NAME` before kv runs, where it is empty. When the command line itself needs the value, wrap it in single quotes: `kv run GH_TOKEN -- sh -c 'curl -H "Authorization: Bearer $GH_TOKEN" https://api.github.com/user'`.
-    - `kv request NAME --why "<what it is for>" [--url <https page where the user creates it>]` when a secret you need doesn't exist. A dialog asks the user to paste it; you only learn that it was stored. Never ask the user to paste a secret into the chat.
+    - `kv request NAME --why "<what it is for>" [--url <https page where the user creates it>] [--global]` when a secret you need doesn't exist. A dialog asks the user to paste it; you only learn that it was stored. Never ask the user to paste a secret into the chat.
+
+    Names and scopes:
+    - A secret belongs either to the current project (the git repo's directory name; worktrees count as their main repo) or is global. `kv run NAME` uses the project's NAME if it has one, otherwise the global NAME; the environment variable is NAME either way.
+    - `kv request` defaults to the current project. Pass `--global` for credentials of the user's own accounts that every project shares (a personal GitHub token, an OpenAI key). The user can still change the scope in the dialog.
+    - Name secrets after what the consuming tool expects, usually its documented environment variable (`STRIPE_SECRET_KEY`, `DATABASE_URL`, `GH_TOKEN`). Don't put the project name in NAME; the scope already says that.
 
     Rules:
     - Never print, echo, write to a file, or transform (base64, rev, hex…) a secret value, and don't run `env`/`printenv` under `kv run`.

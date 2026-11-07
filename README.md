@@ -23,12 +23,20 @@ kv setup codex    # ~/.codex/hooks.json + AGENTS.md 片段 + ~/.codex/rules/kv.r
 |---|---|
 | `kv ls [--json]` | 列出名字和说明，只读属性，不取值、不触发授权 |
 | `kv run NAME... -- CMD` | 把 NAME 作为同名环境变量注入 CMD；stdout/stderr 流式打码为 `‹redacted:NAME›` |
-| `kv request NAME --why … --url …` | 弹原生对话框让人粘贴；agent 只拿到“已存好、N 个字符、像 GitHub token” |
+| `kv request NAME --why … --url …` | 弹原生对话框让人粘贴；agent 只拿到“已存好、N 个字符、像 GitHub token”。输入框不是 `NSSecureTextField`（它会开启 Secure Event Input，挡住剪贴板工具的 ⌥V 等全局快捷键），粘贴后立即替换成掩码显示；窗口不置顶、不抢焦点，用户在别的应用里时只在 Dock 弹跳提示 |
 | `kv add NAME` | 人自己录入（隐藏输入，或 stdin） |
 | `kv rm NAME` | 删除，需要 Touch ID |
 | `kv grants` / `kv revoke` | 查看 / 撤销授权 |
 | `kv log` | 活动记录（不含值） |
 | `kv hook` | 守卫：拦截 `security find-*-password`、`dump-keychain`、读 `Library/Keychains`；exit 2 拦截，Claude Code 和 Codex 通用 |
+
+## 命名与作用范围
+
+- 名字统一用环境变量风格（`STRIPE_SECRET_KEY`、`DATABASE_URL`、`GH_TOKEN`），按使用它的工具文档里的变量名取，不要把项目名写进名字。
+- 每个密钥要么属于某个项目，存为 `<项目>/NAME`；要么是全局的，存为 `NAME`。项目 = 所在 git 仓库的目录名；agent 用的 worktree 会归到它的主仓库，所以共享同一套密钥和授权。不在 git 仓库里时只有全局密钥。
+- `kv run NAME` 先找当前项目的 `NAME`，没有再用全局的；注入的环境变量名总是 `NAME`。也可以写全名 `shop/NAME` 显式指定。
+- `kv request` 默认存到当前项目，`--global` 用于跨项目共用的个人账号凭据；对话框里可以改。`kv add` 在仓库里默认存到项目，不在仓库里或加 `--global` 时存为全局。
+- `kv ls` 先列当前项目的，再列全局的，并标出被项目密钥覆盖的全局项；`kv ls --all` 列出所有项目。
 
 ## 安全模型
 

@@ -1,5 +1,6 @@
 import CryptoKit
 import Foundation
+import KVCore
 import Security
 
 struct KVError: Error, CustomStringConvertible {
@@ -8,7 +9,7 @@ struct KVError: Error, CustomStringConvertible {
 }
 
 struct SecretInfo {
-    let name: String
+    let id: KeyName
     let desc: String
     let modified: Date?
 }
@@ -66,11 +67,12 @@ enum Store {
             throw KVError("cannot list secrets: \(message(status))")
         }
         return items.compactMap { item -> SecretInfo? in
-            guard let name = item[kSecAttrAccount as String] as? String, name != grantKeyAccount else { return nil }
-            return SecretInfo(name: name,
+            guard let account = item[kSecAttrAccount as String] as? String, account != grantKeyAccount,
+                  let id = KeyName(account) else { return nil }
+            return SecretInfo(id: id,
                               desc: item[kSecAttrComment as String] as? String ?? "",
                               modified: item[kSecAttrModificationDate as String] as? Date)
-        }.sorted { $0.name < $1.name }
+        }.sorted { ($0.id.scope ?? "", $0.id.name) < ($1.id.scope ?? "", $1.id.name) }
     }
 
     static func get(_ name: String) throws -> Data {

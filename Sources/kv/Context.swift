@@ -1,15 +1,21 @@
 import Darwin
 import Foundation
+import KVCore
 
 /// Who is asking (best effort, display and grant scoping only) and for which project.
 struct Caller {
     let agent: String
+    /// Main repo root, or the working directory outside git (approvals are per directory then).
     let project: String
+    /// Key prefix for project secrets; nil outside git, where only global secrets apply.
+    let scope: String?
 
-    var projectName: String { (project as NSString).lastPathComponent }
+    var projectName: String { scope ?? (project as NSString).lastPathComponent }
 
     static func current() -> Caller {
-        Caller(agent: detectAgent(), project: projectRoot(FileManager.default.currentDirectoryPath))
+        let cwd = FileManager.default.currentDirectoryPath
+        let root = Project.root(containing: cwd)
+        return Caller(agent: detectAgent(), project: root ?? cwd, scope: root.map(Project.scope(forRoot:)))
     }
 
     static func detectAgent() -> String {
@@ -45,15 +51,6 @@ struct Caller {
         return info.kp_eproc.e_ppid
     }
 
-    /// Nearest enclosing git work tree, else the directory itself.
-    static func projectRoot(_ dir: String) -> String {
-        var url = URL(fileURLWithPath: dir).standardizedFileURL
-        while url.path != "/" {
-            if FileManager.default.fileExists(atPath: url.appendingPathComponent(".git").path) { return url.path }
-            url.deleteLastPathComponent()
-        }
-        return dir
-    }
 }
 
 enum Paths {

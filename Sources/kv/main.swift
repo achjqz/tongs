@@ -5,10 +5,14 @@ import KVCore
 let usage = """
 kv — secrets your AI agents can use without seeing
 
-  kv ls [--json]                         list secret names (never values)
+Names are environment-variable style. A secret is either global (NAME) or belongs to
+the current git project (<project>/NAME); NAME resolves to the project one first.
+
+  kv ls [--all] [--json]                 secrets usable here (never values); --all: every project
   kv run NAME... -- CMD...               run CMD with each NAME in its environment; output is scrubbed
-  kv request NAME [--why T] [--url U]    ask the human for a secret in a native dialog
-  kv add NAME [--desc T]                 store a secret yourself (hidden prompt, or stdin)
+  kv request NAME [--why T] [--url U] [--global]
+                                         ask the human for a secret in a native dialog
+  kv add NAME [--desc T] [--global]      store a secret yourself (hidden prompt, or stdin)
   kv rm NAME                             delete a secret (asks for Touch ID)
   kv grants                              show active approvals
   kv revoke [NAME] [--agent A]           drop approvals
@@ -25,11 +29,25 @@ func fail(_ message: String, code: Int32 = 1) -> Never {
     exit(code)
 }
 
-func checkName(_ name: String) {
-    guard name.range(of: #"^[A-Za-z_][A-Za-z0-9_]*$"#, options: .regularExpression) != nil,
-          name != Store.grantKeyAccount else {
-        fail("invalid name \(name): use an environment-variable style name like GITHUB_TOKEN")
+func parseKey(_ s: String) -> KeyName {
+    guard s != Store.grantKeyAccount, let k = KeyName(s) else {
+        fail("invalid name \(s): use an environment-variable style name like GITHUB_TOKEN, optionally project/NAME")
     }
+    return k
+}
+
+/// NAME → this project's secret if there is one, else the global one. project/NAME is taken as is.
+func resolve(_ k: KeyName, for caller: Caller) -> KeyName? {
+    if k.scope != nil { return Store.exists(k.key) ? k : nil }
+    if let scope = caller.scope {
+        let scoped = KeyName(scope: scope, name: k.name)
+        if Store.exists(scoped.key) { return scoped }
+    }
+    return Store.exists(k.key) ? k : nil
+}
+
+func scopeLabel(_ k: KeyName) -> String {
+    k.scope.map { "项目 \($0)" } ?? "全局"
 }
 
 /// Splits `--flag value` options from positional arguments.
@@ -65,101 +83,144 @@ func shortCommand(_ argv: [String]) -> String {
     return s.count > 60 ? String(s.prefix(57)) + "…" : s
 }
 
+func clip(_ s: String, _ n: Int) -> String {
+    s.count > n ? String(s.prefix(n - 1)) + "…" : s
+}
+
+/// The Touch ID sheet only shows a line or two after "“kv”正在尝试", so keep it to who gets what.
+/// The full context goes to stderr and the activity log.
+func approvalReason(_ keys: [KeyName], caller: Caller) -> String {
+    let what = keys.count == 1 ? keys[0].key : "\(keys[0].key) 等 \(keys.count) 项"
+    let place = keys.allSatisfy { $0.scope == nil } ? "（\(clip(caller.projectName, 12))）" : ""
+    return "向 \(caller.agent) 提供 \(what)\(place)"
+}
+
 // MARK: commands
 
 func cmdList(_ args: ArraySlice<String>) {
-    let (_, opts) = parseOptions(args, flags: [], switches: ["--json"])
-    let items: [SecretInfo]
+    let (_, opts) = parseOptions(args, flags: [], switches: ["--json", "--all"])
+    let caller = Caller.current()
+    var items: [SecretInfo]
     do { items = try Store.list() } catch { fail("\(error)") }
+    if opts["--all"] == nil {
+        // This project's secrets first, then the global ones.
+        items = items.filter { $0.id.scope == nil || $0.id.scope == caller.scope }
+            .sorted { ($0.id.scope == nil ? 1 : 0, $0.id.name) < ($1.id.scope == nil ? 1 : 0, $1.id.name) }
+    }
+    // A global secret is shadowed here when this project has its own of the same name.
+    let projectNames = Set(items.filter { $0.id.scope != nil && $0.id.scope == caller.scope }.map(\.id.name))
+    func shadowed(_ i: SecretInfo) -> Bool { i.id.scope == nil && projectNames.contains(i.id.name) }
+
     if opts["--json"] != nil {
-        let arr = items.map { ["name": $0.name, "description": $0.desc] }
+        let arr: [[String: Any]] = items.map {
+            ["name": $0.id.name, "key": $0.id.key, "scope": $0.id.scope ?? NSNull(),
+             "description": $0.desc, "usableHere": !shadowed($0) && ($0.id.scope == nil || $0.id.scope == caller.scope)]
+        }
         let data = try! JSONSerialization.data(withJSONObject: arr, options: [.prettyPrinted, .sortedKeys])
         print(String(decoding: data, as: UTF8.self))
         return
     }
     if items.isEmpty {
-        print("(no secrets yet — `kv request NAME --why ...` or `kv add NAME`)")
+        print("(no secrets here yet — `kv request NAME --why ...` or `kv add NAME`)")
         return
     }
-    let width = max(items.map(\.name.count).max() ?? 0, 4)
+    let nameWidth = max(items.map { (opts["--all"] != nil ? $0.id.key : $0.id.name).count }.max() ?? 0, 4)
+    let scopeWidth = max(items.map { scopeLabel($0.id).count }.max() ?? 0, 2)
     for i in items {
-        print(i.name.padding(toLength: width + 2, withPad: " ", startingAt: 0) + i.desc)
+        let name = opts["--all"] != nil ? i.id.key : i.id.name
+        var line = name.padding(toLength: nameWidth + 2, withPad: " ", startingAt: 0)
+            + scopeLabel(i.id).padding(toLength: scopeWidth + 2, withPad: " ", startingAt: 0)
+            + i.desc
+        if shadowed(i) { line += "（此项目里被项目密钥覆盖）" }
+        print(line)
     }
 }
 
 func cmdAdd(_ args: ArraySlice<String>) {
-    let (pos, opts) = parseOptions(args, flags: ["--desc"])
-    guard pos.count == 1 else { fail("usage: kv add NAME [--desc TEXT]") }
-    let name = pos[0]
-    checkName(name)
+    let (pos, opts) = parseOptions(args, flags: ["--desc"], switches: ["--global"])
+    guard pos.count == 1 else { fail("usage: kv add NAME [--desc TEXT] [--global]") }
+    let caller = Caller.current()
+    var id = parseKey(pos[0])
+    if id.scope == nil, opts["--global"] == nil, let scope = caller.scope {
+        id = KeyName(scope: scope, name: id.name)
+    }
     var value: String
     if isatty(0) != 0 {
         var buf = [CChar](repeating: 0, count: 8192)
-        guard let p = readpassphrase("\(name) (hidden): ", &buf, buf.count, RPP_ECHO_OFF) else { fail("no input") }
+        guard let p = readpassphrase("\(id.key) (hidden): ", &buf, buf.count, RPP_ECHO_OFF) else { fail("no input") }
         value = String(cString: p)
     } else {
         value = String(decoding: FileHandle.standardInput.readDataToEndOfFile(), as: UTF8.self)
     }
     value = value.trimmingCharacters(in: .newlines)
     guard !value.isEmpty else { fail("empty value, nothing stored") }
-    do { try Store.set(name, value: Data(value.utf8), desc: opts["--desc"]) } catch { fail("\(error)") }
-    ActivityLog.record("add", caller: .current(), secrets: [name])
-    print("stored \(name)")
+    do { try Store.set(id.key, value: Data(value.utf8), desc: opts["--desc"]) } catch { fail("\(error)") }
+    ActivityLog.record("add", caller: caller, secrets: [id.key])
+    print("stored \(id.key) (\(scopeLabel(id)))")
 }
 
 func cmdRequest(_ args: ArraySlice<String>) {
-    let (pos, opts) = parseOptions(args, flags: ["--why", "--url", "--desc"])
-    guard pos.count == 1 else { fail("usage: kv request NAME [--why TEXT] [--url URL] [--desc TEXT]") }
-    let name = pos[0]
-    checkName(name)
+    let (pos, opts) = parseOptions(args, flags: ["--why", "--url", "--desc"], switches: ["--global"])
+    guard pos.count == 1 else { fail("usage: kv request NAME [--why TEXT] [--url URL] [--desc TEXT] [--global]") }
     let caller = Caller.current()
+    let asked = parseKey(pos[0])
     let why = opts["--why"]
     var url: URL?
     if let u = opts["--url"] {
         guard let parsed = URL(string: u), parsed.scheme == "https" else { fail("--url must be an https URL") }
         url = parsed
     }
+
+    // The user picks the scope in the dialog unless the name already fixes it.
+    let pickScope = asked.scope == nil ? caller.scope : nil
     var info = "项目：\(caller.projectName)\n"
     if let why { info += "用途：\(why)\n" }
-    if Store.exists(name) { info += "⚠️ 已存在同名密钥，保存将替换它。\n" }
+    let existing = [pickScope.map { KeyName(scope: $0, name: asked.name) }, asked].compactMap { $0 }.filter { Store.exists($0.key) }
+    if !existing.isEmpty { info += "已存在：\(existing.map(\.key).joined(separator: "、"))，同一范围下保存会替换它。\n" }
     info += "\n值只存入本机钥匙串，不会返回给 \(caller.agent)。"
 
-    guard let value = UI.askSecret(title: "\(caller.agent) 请求密钥 \(name)", info: info, url: url) else {
-        ActivityLog.record("request-declined", caller: caller, secrets: [name])
-        fail("the user declined to provide \(name)")
+    guard let entry = UI.askSecret(title: "\(caller.agent) 请求密钥 \(asked.name)", info: info, url: url,
+                                   project: pickScope, defaultGlobal: opts["--global"] != nil) else {
+        ActivityLog.record("request-declined", caller: caller, secrets: [asked.key])
+        fail("the user declined to provide \(asked.name)")
     }
-    do { try Store.set(name, value: Data(value.utf8), desc: opts["--desc"] ?? why) } catch { fail("\(error)") }
-    ActivityLog.record("request", caller: caller, secrets: [name])
-    let shape = describeShape(value).map { ", looks like a \($0)" } ?? ""
-    print("stored \(name) (\(value.count) chars\(shape)). Use it with: kv run \(name) -- <command>")
+    let id = asked.scope != nil || entry.global || pickScope == nil ? asked : KeyName(scope: pickScope, name: asked.name)
+    do { try Store.set(id.key, value: Data(entry.value.utf8), desc: opts["--desc"] ?? why) } catch { fail("\(error)") }
+    ActivityLog.record("request", caller: caller, secrets: [id.key])
+    let shape = describeShape(entry.value).map { ", looks like a \($0)" } ?? ""
+    print("stored \(id.key) (\(scopeLabel(id)), \(entry.value.count) chars\(shape)). Use it with: kv run \(id.name) -- <command>")
 }
 
 func cmdRun(_ args: ArraySlice<String>) {
     guard let sep = args.firstIndex(of: "--") else { fail("usage: kv run NAME... -- CMD...") }
-    let names = Array(args[args.startIndex..<sep])
+    let asked = args[args.startIndex..<sep].map(parseKey)
     let argv = Array(args[(sep + 1)...])
-    guard !names.isEmpty, !argv.isEmpty else { fail("usage: kv run NAME... -- CMD...") }
-    names.forEach(checkName)
-    let missing = names.filter { !Store.exists($0) }
-    guard missing.isEmpty else {
-        fail("no secret named \(missing.joined(separator: ", ")). Ask the user with: kv request \(missing[0]) --why \"...\"")
-    }
+    guard !asked.isEmpty, !argv.isEmpty else { fail("usage: kv run NAME... -- CMD...") }
+    guard Set(asked.map(\.name)).count == asked.count else { fail("each environment variable name can only be given once") }
 
     let caller = Caller.current()
+    var keys: [KeyName] = []
+    for k in asked {
+        guard let r = resolve(k, for: caller) else {
+            fail("no secret \(k.key) for \(caller.projectName) (see `kv ls`). Ask the user with: kv request \(k.name) --why \"...\"")
+        }
+        keys.append(r)
+    }
+
     let book = grantBook()
-    let unapproved = names.filter { !book.covers(secret: $0, agent: caller.agent, project: caller.project) }
+    let unapproved = keys.filter { !book.covers(secret: $0.key, agent: caller.agent, project: caller.project) }
     if !unapproved.isEmpty {
-        let reason = "允许 \(caller.agent) 在 \(caller.projectName) 中使用 \(unapproved.joined(separator: "、")) 运行「\(shortCommand(argv))」（12 小时内不再询问）"
+        warn("waiting for Touch ID: \(caller.agent) in \(caller.projectName) wants \(unapproved.map(\.key).joined(separator: ", ")) for `\(shortCommand(argv))` (approval lasts 12h)")
         do {
-            try UI.authenticate(reason)
+            try UI.authenticate(approvalReason(unapproved, caller: caller))
         } catch {
-            ActivityLog.record("denied", caller: caller, secrets: unapproved, command: argv)
+            ActivityLog.record("denied", caller: caller, secrets: unapproved.map(\.key), command: argv)
             fail("\(error)")
         }
         let expires = Date().addingTimeInterval(grantTTL)
-        for n in unapproved {
+        for k in unapproved {
             do {
-                try book.add(Grant(secret: n, agent: caller.agent, project: caller.project, expires: expires))
+                try book.add(Grant(secret: k.key, agent: caller.agent, project: caller.project, expires: expires))
             } catch {
                 warn("approved for this run only; could not save the approval (\(error.localizedDescription))")
                 break
@@ -169,34 +230,33 @@ func cmdRun(_ args: ArraySlice<String>) {
 
     var env: [String: String] = [:]
     var secrets: [(name: String, value: String)] = []
-    for n in names {
+    for k in keys {
         do {
-            let v = String(decoding: try Store.get(n), as: UTF8.self)
-            env[n] = v
-            secrets.append((n, v))
+            let v = String(decoding: try Store.get(k.key), as: UTF8.self)
+            env[k.name] = v
+            secrets.append((k.name, v))
         } catch {
             fail("\(error)")
         }
     }
     let code = Runner.run(argv, env: env, scrub: secrets)
-    ActivityLog.record("run", caller: caller, secrets: names, command: argv, exit: code)
+    ActivityLog.record("run", caller: caller, secrets: keys.map(\.key), command: argv, exit: code)
     exit(code)
 }
 
 func cmdRemove(_ args: ArraySlice<String>) {
-    guard args.count == 1, let name = args.first else { fail("usage: kv rm NAME") }
-    checkName(name)
-    guard Store.exists(name) else { fail("no secret named \(name)") }
+    guard args.count == 1, let arg = args.first else { fail("usage: kv rm NAME") }
     let caller = Caller.current()
+    guard let id = resolve(parseKey(arg), for: caller) else { fail("no secret \(arg) for \(caller.projectName)") }
     do {
-        try UI.authenticate("删除密钥 \(name)（由 \(caller.agent) 发起）")
-        try Store.delete(name)
-        _ = try? grantBook().revoke(secret: name, agent: nil)
+        try UI.authenticate("删除密钥 \(id.key)")
+        try Store.delete(id.key)
+        _ = try? grantBook().revoke(secret: id.key, agent: nil)
     } catch {
         fail("\(error)")
     }
-    ActivityLog.record("rm", caller: caller, secrets: [name])
-    print("deleted \(name)")
+    ActivityLog.record("rm", caller: caller, secrets: [id.key])
+    print("deleted \(id.key)")
 }
 
 func cmdGrants() {
@@ -212,8 +272,10 @@ func cmdGrants() {
 func cmdRevoke(_ args: ArraySlice<String>) {
     let (pos, opts) = parseOptions(args, flags: ["--agent"])
     guard pos.count <= 1 else { fail("usage: kv revoke [NAME] [--agent AGENT]") }
+    var secret = pos.first
+    if let s = secret, let r = resolve(parseKey(s), for: .current()) { secret = r.key }
     do {
-        let n = try grantBook().revoke(secret: pos.first, agent: opts["--agent"])
+        let n = try grantBook().revoke(secret: secret, agent: opts["--agent"])
         print("revoked \(n) approval(s)")
     } catch {
         fail("\(error)")
@@ -252,7 +314,7 @@ func cmdDoctor() {
         print("\(ok ? "✓" : "✗") \(what)\(detail.isEmpty ? "" : " — \(detail)")")
     }
     let caller = Caller.current()
-    print("caller: \(caller.agent), project \(caller.project)")
+    print("caller: \(caller.agent), project \(caller.project), scope \(caller.scope ?? "(none: global only)")")
     print("service: \(Store.service)")
 
     let probe = "__kv_doctor__"
@@ -280,10 +342,7 @@ func cmdDoctor() {
 
     // Opening a window can abort the process when WindowServer is unreachable, so probe in a child.
     let p = Process()
-    p.executableURL = URL(fileURLWithPath: CommandLine.arguments[0]).standardizedFileURL
-    if !FileManager.default.isExecutableFile(atPath: p.executableURL!.path) {
-        p.executableURL = URL(fileURLWithPath: ProcessInfo.processInfo.arguments[0])
-    }
+    p.executableURL = URL(fileURLWithPath: Bundle.main.executablePath ?? CommandLine.arguments[0])
     p.arguments = ["__gui-probe"]
     p.standardError = FileHandle.nullDevice
     p.standardOutput = FileHandle.nullDevice

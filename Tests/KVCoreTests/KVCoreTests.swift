@@ -79,6 +79,37 @@ let token = "ghp_abcDEF1234567890xyz"
     #expect(book.covers(secret: "GH", agent: "Codex", project: "/p", now: now))
 }
 
+@Test func keyNames() {
+    #expect(KeyName("GH_TOKEN") == KeyName(scope: nil, name: "GH_TOKEN"))
+    #expect(KeyName("shop/STRIPE_KEY") == KeyName(scope: "shop", name: "STRIPE_KEY"))
+    #expect(KeyName("shop/STRIPE_KEY")?.key == "shop/STRIPE_KEY")
+    #expect(KeyName("my.app-2/X") != nil)
+    for bad in ["1ABC", "a/b/C", "/X", "shop/", "sh op/X", "X-Y", ""] {
+        #expect(KeyName(bad) == nil, "\(bad)")
+    }
+}
+
+@Test func projectRootFollowsWorktrees() throws {
+    let fm = FileManager.default
+    let tmp = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString).resolvingSymlinksInPath()
+    let main = tmp.appendingPathComponent("shop")
+    let sub = main.appendingPathComponent("src/app")
+    try fm.createDirectory(at: main.appendingPathComponent(".git/worktrees/feat"), withIntermediateDirectories: true)
+    try fm.createDirectory(at: sub, withIntermediateDirectories: true)
+    let wt = tmp.appendingPathComponent("agents/worktrees/feat-x")
+    try fm.createDirectory(at: wt.appendingPathComponent("lib"), withIntermediateDirectories: true)
+    try "gitdir: \(main.path)/.git/worktrees/feat\n".write(to: wt.appendingPathComponent(".git"), atomically: true, encoding: .utf8)
+    let lone = tmp.appendingPathComponent("not-a-repo")
+    try fm.createDirectory(at: lone, withIntermediateDirectories: true)
+
+    #expect(Project.root(containing: sub.path) == main.path)
+    #expect(Project.root(containing: wt.appendingPathComponent("lib").path) == main.path)
+    #expect(Project.root(containing: lone.path) == nil)
+    #expect(Project.scope(forRoot: main.path) == "shop")
+    #expect(Project.scope(forRoot: "/x/My Project") == "My-Project")
+    #expect(Project.scope(forRoot: "/x/.dotfiles") == "p.dotfiles")
+}
+
 @Test func guardBlocksKeychainReads() {
     func check(_ input: [String: Any]) -> String? {
         Guard.check(hookInput: try! JSONSerialization.data(withJSONObject: input))
