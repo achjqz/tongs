@@ -1,0 +1,36 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+      - run: swift test
+      - name: Build universal binary
+        run: |
+          mkdir dist
+          swift build -c release --arch arm64 --arch x86_64
+          cp "$(swift build -c release --arch arm64 --arch x86_64 --show-bin-path)/tongs" dist/tongs
+          codesign --force --sign - --identifier dev.tongs.cli dist/tongs
+          lipo -info dist/tongs
+      - name: Check the version matches the tag
+        run: |
+          test "$(dist/tongs --version)" = "tongs ${GITHUB_REF_NAME#v}"
+      - name: Package
+        run: |
+          cp LICENSE dist/
+          tar -czf tongs-macos-universal.tar.gz -C dist tongs LICENSE
+          shasum -a 256 tongs-macos-universal.tar.gz | tee tongs-macos-universal.tar.gz.sha256
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" tongs-macos-universal.tar.gz tongs-macos-universal.tar.gz.sha256 \
+            --title "$GITHUB_REF_NAME" --generate-notes

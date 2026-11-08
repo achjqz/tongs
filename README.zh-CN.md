@@ -30,14 +30,30 @@ macOS 15 及以上。录入面板在 macOS 26+ 使用 Liquid Glass，在 15 上�
 
 ## 安装
 
-从源码构建（需要 Swift 6.2 / Xcode 26）：
+用 Homebrew：
 
 ```bash
-git clone https://github.com/<you>/tongs && cd tongs
+brew install achjqz/tap/tongs
+```
+
+或者下载编译好的程序（通用二进制，Intel 和 Apple 芯片都能用）：
+
+```bash
+curl -fsSL https://github.com/achjqz/tongs/releases/latest/download/tongs-macos-universal.tar.gz | tar xz
+mv tongs ~/.local/bin/
+```
+
+或者从源码构建（需要 Xcode 26 或 Swift 6.2 工具链）：
+
+```bash
+git clone https://github.com/achjqz/tongs && cd tongs
 swift build -c release
 ln -sf "$PWD/.build/release/tongs" ~/.local/bin/tongs
-tongs doctor
 ```
+
+运行 `tongs doctor` 检查能否访问钥匙串、Touch ID 和面板。
+
+发布版本目前没有经过公证。brew 和 curl 不会设置隔离标记，macOS 可以直接运行；用浏览器下载的文件会被拦截，需要先执行 `xattr -d com.apple.quarantine tongs`。
 
 接入 agent（不加 `--apply` 只打印将要做的改动；加上后，每个被改的文件会保留一份 `.tongs-backup`）：
 
@@ -93,7 +109,7 @@ TONGS_UI_PREVIEW="filled,dark,snap=/tmp/p.png" tongs request DEMO --why preview
 - `legacy`：强制显示 macOS 15 的样式；
 - `snap=`：把面板截图存到指定路径后退出，全程不抢焦点。进程截自己的窗口不需要录屏权限，但截不到玻璃后面的桌面。
 
-从源码构建的是 ad-hoc 签名，每次构建签名都会变。钥匙串会把新版本当成另一个程序，每个密钥都会问一次登录密码，选"始终允许"就行。用 Developer ID 签名的正式版本不会有这个问题。
+程序用的是 ad-hoc 签名，每次构建和升级后签名都会变。钥匙串会把新版本当成另一个程序，每个密钥都会问一次登录密码，选"始终允许"就行。换成 Developer ID 签名可以解决这个问题。
 
 ## 许可证
 

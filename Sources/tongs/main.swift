@@ -22,6 +22,7 @@ the current git project (<project>/NAME); NAME resolves to the project one first
   tongs hook                                PreToolUse guard (reads hook JSON on stdin)
 """
 
+let version = "0.1.0"
 let grantTTL: TimeInterval = 12 * 3600
 
 func fail(_ message: String, code: Int32 = 1) -> Never {
@@ -394,5 +395,6 @@ case "doctor": cmdDoctor()
 case "setup": Setup.main(rest)
 case "__gui-probe": guiProbe()
 case "help", "-h", "--help": print(usage)
+case "version", "-v", "--version": print("tongs \(version)")
 default: fail("unknown command \(command)\n\n\(usage)")
 }

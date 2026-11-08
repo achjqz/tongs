@@ -30,14 +30,30 @@ macOS 15 or later. The request panel uses Liquid Glass on macOS 26+ and system m
 
 ## Install
 
-From source (Swift 6.2 toolchain / Xcode 26):
+With Homebrew:
 
 ```bash
-git clone https://github.com/<you>/tongs && cd tongs
+brew install achjqz/tap/tongs
+```
+
+Or download the binary (universal, Intel and Apple Silicon):
+
+```bash
+curl -fsSL https://github.com/achjqz/tongs/releases/latest/download/tongs-macos-universal.tar.gz | tar xz
+mv tongs ~/.local/bin/
+```
+
+Or build from source with Xcode 26 or a Swift 6.2 toolchain:
+
+```bash
+git clone https://github.com/achjqz/tongs && cd tongs
 swift build -c release
 ln -sf "$PWD/.build/release/tongs" ~/.local/bin/tongs
-tongs doctor
 ```
+
+Run `tongs doctor` to check that it can reach the Keychain, Touch ID and the panel.
+
+Releases aren't notarized yet. Brew and curl don't set the quarantine flag, so macOS runs the binary, but a file downloaded with a browser gets blocked until you clear it with `xattr -d com.apple.quarantine tongs`.
 
 Wire it into your agents. Without `--apply` this only prints what would change; with it, each modified file keeps a one-time `.tongs-backup`.
 
@@ -87,7 +103,7 @@ TONGS_UI_PREVIEW="filled,dark,snap=/tmp/p.png" tongs request DEMO --why preview
 
 The UI follows your preferred language (Chinese or English); `TONGS_LANG=zh|en` overrides it. `TONGS_UI_PREVIEW` pre-fills the panel, forces `light`/`dark`, can force the macOS 15 look with `legacy`, and with `snap=` writes a capture of the panel and exits without taking focus. A process may capture its own windows without Screen Recording permission, but the capture can't see the desktop behind the glass.
 
-Builds from source are ad-hoc signed and the signature changes with every build. The Keychain then treats the new binary as a different app and asks for your login password once per secret; choose **Always Allow**. A Developer ID–signed release won't have this problem.
+Binaries are ad-hoc signed, and the signature changes with every build and every upgrade. The Keychain then treats the new binary as a different app and asks for your login password once per secret; choose **Always Allow**. A Developer ID signature would fix this.
 
 ## License
 
