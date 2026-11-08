@@ -3,11 +3,16 @@
 /* The hero: a pair of forged tongs holding a red-hot key, shaded live from 2D distance fields.
    Steel near the key takes real temper colours (straw, bronze, violet, blue), the same ones the
    page uses as its palette. The pointer moves the light. */
-(function forge() {
+function forge() {
   const canvas = document.getElementById("forge");
   if (!canvas) return;
   const gl = canvas.getContext("webgl", { antialias: false, alpha: false, powerPreference: "low-power" });
   if (!gl) { canvas.remove(); return; }
+
+  // Without a GPU one frame takes seconds and freezes the page. The hero works fine as text alone.
+  const info = gl.getExtension("WEBGL_debug_renderer_info");
+  const renderer = info ? String(gl.getParameter(info.UNMASKED_RENDERER_WEBGL)) : "";
+  if (/swiftshader|llvmpipe|software|basic render/i.test(renderer)) { canvas.remove(); return; }
 
   const fragment = `
     precision highp float;
@@ -224,22 +229,28 @@
       gl_FragColor = vec4(color, 1.0);
     }`;
 
-  function compile(type, source) {
+  const program = gl.createProgram();
+  for (const [type, source] of [[gl.VERTEX_SHADER, "attribute vec2 a; void main(){ gl_Position = vec4(a, 0.0, 1.0); }"], [gl.FRAGMENT_SHADER, fragment]]) {
     const shader = gl.createShader(type);
     gl.shaderSource(shader, source);
     gl.compileShader(shader);
-    if (gl.getShaderParameter(shader, gl.COMPILE_STATUS)) return shader;
-    console.warn(gl.getShaderInfoLog(shader));
-    return null;
+    gl.attachShader(program, shader);
   }
-  const vs = compile(gl.VERTEX_SHADER, "attribute vec2 a; void main(){ gl_Position = vec4(a, 0.0, 1.0); }");
-  const fs = compile(gl.FRAGMENT_SHADER, fragment);
-  if (!vs || !fs) { canvas.remove(); return; }
-  const program = gl.createProgram();
-  gl.attachShader(program, vs);
-  gl.attachShader(program, fs);
   gl.linkProgram(program);
-  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) { canvas.remove(); return; }
+
+  // Compiling can take a while. Where the browser can do it in the background, don't ask until it's done.
+  const parallel = gl.getExtension("KHR_parallel_shader_compile");
+  (function whenLinked() {
+    if (parallel && !gl.getProgramParameter(program, parallel.COMPLETION_STATUS_KHR)) { setTimeout(whenLinked, 50); return; }
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+      console.warn(gl.getProgramInfoLog(program));
+      canvas.remove();
+      return;
+    }
+    run();
+  })();
+
+  function run() {
   gl.useProgram(program);
   gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
@@ -309,6 +320,7 @@
   new ResizeObserver(() => { layout(); draw(performance.now()); }).observe(canvas);
   layout();
   draw(performance.now());
+  canvas.classList.add("lit");
   if (still) return;
 
   new IntersectionObserver(([entry]) => {
@@ -323,4 +335,13 @@
     target.y = box.bottom - event.clientY;
   }, { passive: true });
   wake();
-})();
+  }
+}
+
+// The text is the page's content; the render waits until that has been painted.
+function afterPaint() {
+  if ("requestIdleCallback" in window) requestIdleCallback(forge, { timeout: 1500 });
+  else setTimeout(forge, 200);
+}
+if (document.readyState === "complete") afterPaint();
+else window.addEventListener("load", afterPaint, { once: true });

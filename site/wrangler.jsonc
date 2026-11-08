@@ -1,8 +1,9 @@
-// tongs.roamake.com: a static-assets Worker. `npx wrangler deploy` from this directory uploads
-// public/; the first deploy creates the DNS record and certificate for the custom domain.
+// tongs.roamake.com: a static-assets Worker. `npx wrangler deploy` from this directory runs build.py
+// and uploads public/; the first deploy creates the DNS record and certificate for the custom domain.
 {
   "name": "tongs-site",
   "compatibility_date": "2026-10-01",
+  "build": { "command": "python3 build.py" },
   "assets": { "directory": "./public" },
   "routes": [{ "pattern": "tongs.roamake.com", "custom_domain": true }]
 }

@@ -2,15 +2,10 @@
 
 const isZh = () => document.documentElement.lang.startsWith("zh");
 
-/* Language toggle */
-document.getElementById("lang-toggle").addEventListener("click", () => {
-  const next = isZh() ? "en" : "zh-CN";
-  document.documentElement.lang = next;
-  try { localStorage.setItem("tongs-lang", next); } catch (e) {}
-  renderScrub();
-  restartDemo();
+/* Each language is its own page. Choosing one is remembered, so lang.js can honour it later. */
+document.getElementById("lang-toggle").addEventListener("click", (event) => {
+  try { localStorage.setItem("tongs-lang", event.currentTarget.hreflang); } catch (e) {}
 });
-let restartDemo = () => {};
 
 /* Copy buttons */
 document.querySelectorAll("[data-copy]").forEach((button) => {
@@ -371,7 +366,6 @@ renderScrub();
     if (!paused && !offscreen && wake) { const done = wake; wake = null; done(); }
   }).observe($("stage"));
 
-  restartDemo = () => { build(); playFrom(current); };
   build();
   playFrom(0);
 })();

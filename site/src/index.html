@@ -1,17 +1,29 @@
 <!doctype html>
-<html lang="en">
+<html lang="{{lang}}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>tongs</title>
-<meta name="description" content="Let coding agents use your API keys without seeing them. Keys stay in the macOS Keychain, you approve with Touch ID, and values are masked in command output.">
+<title>{{title}}</title>
+<meta name="description" content="{{description}}">
 <meta name="theme-color" content="#0a0b0d">
-<meta property="og:title" content="tongs">
-<meta property="og:description" content="Let coding agents use your API keys without seeing them.">
+<link rel="canonical" href="{{url}}">
+<link rel="alternate" hreflang="en" href="https://tongs.roamake.com/">
+<link rel="alternate" hreflang="zh-CN" href="https://tongs.roamake.com/zh/">
+<link rel="alternate" hreflang="x-default" href="https://tongs.roamake.com/">
+<meta property="og:site_name" content="tongs">
+<meta property="og:title" content="{{title}}">
+<meta property="og:description" content="{{description}}">
 <meta property="og:type" content="website">
-<meta property="og:url" content="https://tongs.roamake.com/">
-<meta property="og:image" content="https://tongs.roamake.com/img/panel-en.png">
+<meta property="og:url" content="{{url}}">
+<meta property="og:locale" content="{{og_locale}}">
+<meta property="og:image" content="https://tongs.roamake.com/img/{{og_image}}">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="{{og_alt}}">
+<meta name="twitter:card" content="summary_large_image">
+<script type="application/ld+json">{{jsonld}}</script>
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
 <link rel="alternate" type="text/plain" href="/llms.txt" title="Instructions for coding agents">
 <link rel="preload" href="/fonts/body.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/style.css">
@@ -23,7 +35,7 @@
 
 <header class="bar">
   <div class="wrap bar-row">
-    <a class="mark" href="#top" aria-label="tongs">
+    <a class="mark" href="{{url_path}}" aria-label="tongs">
       <svg viewBox="0 0 32 32" width="22" height="22" aria-hidden="true">
         <path class="mark-arm" d="M10 30 18.500 12Q20 8 17.500 4M22 30 13.500 12Q12 8 14.500 4"/>
         <circle class="mark-pin" cx="16" cy="17.300" r="1.500"/>
@@ -37,9 +49,7 @@
       <a href="#commands"><span data-l="en">Commands</span><span data-l="zh">命令</span></a>
       <a href="#install"><span data-l="en">Install</span><span data-l="zh">安装</span></a>
       <a href="https://github.com/achjqz/tongs">GitHub</a>
-      <button id="lang-toggle" class="lang" type="button" aria-label="Switch language">
-        <span data-l="en">中文</span><span data-l="zh">EN</span>
-      </button>
+      <a id="lang-toggle" class="lang" href="{{other_url}}" hreflang="{{other_lang}}" lang="{{other_lang}}" aria-label="{{other_label}}">{{other_short}}</a>
     </nav>
   </div>
 </header>
@@ -71,13 +81,13 @@
       <span data-l="en">Or install it yourself:</span><span data-l="zh">或者自己装：</span>
       <code>brew install achjqz/tap/tongs</code>
       <br>
-      <span data-l="en">macOS 15 or later. Open source under Apache-2.0.</span>
-      <span data-l="zh">需要 macOS 15 及以上。开源，使用 Apache-2.0 许可证。</span>
+      <span data-l="en">macOS 15 or later. Works with Claude Code and Codex. Open source under Apache-2.0.</span>
+      <span data-l="zh">需要 macOS 15 及以上。支持 Claude Code 和 Codex。开源，使用 Apache-2.0 许可证。</span>
     </p>
   </div>
 </section>
 
-<section class="demo-section" aria-label="Demo">
+<section class="demo-section" aria-label="{{demo_label}}">
   <div class="wrap">
     <div class="demo-win" id="stage">
       <div class="demo-bar">
@@ -130,7 +140,7 @@
       <button class="demo-pause" id="demo-pause" type="button"></button>
     </div>
     <p class="demo-caption" id="demo-caption" aria-live="polite"></p>
-    <noscript><img src="/img/panel-en.png" width="880" height="692" alt="The tongs panel asking for STRIPE_SECRET_KEY"></noscript>
+    <noscript><img src="/img/{{panel_image}}" width="880" height="692" alt="{{panel_alt}}"></noscript>
   </div>
 </section>
 
@@ -450,6 +460,43 @@ stored shop/GH_TOKEN (<span data-l="en">project</span><span data-l="zh">项目</
         <span data-l="zh">已经在你账户下运行的恶意软件，可以在你粘贴时读取剪贴板。</span>
       </li>
     </ul>
+  </div>
+</section>
+
+<section class="section" id="faq">
+  <div class="wrap split">
+    <div class="split-head reveal">
+      <h2>
+        <span data-l="en">Questions</span>
+        <span data-l="zh">常见问题</span>
+      </h2>
+    </div>
+    <div class="faq reveal">
+      <div>
+        <h3><span data-l="en">How do I keep API keys out of Claude Code or Codex?</span><span data-l="zh">怎么不让 Claude Code 或 Codex 看到 API key？</span></h3>
+        <p><span data-l="en">Store the key with tongs and let the agent use it by name. <code>tongs run</code> gives the value to one command as an environment variable and masks it in the output, so it stays out of the conversation. See <a class="link" href="#limits">what this doesn't protect against</a>.</span><span data-l="zh">用 tongs 存 key，让 agent 通过名字使用。<code>tongs run</code> 把值作为环境变量传给一条命令，并在输出里遮掉，所以值不会进入对话。它的局限见<a class="link" href="#limits">它防不了什么</a>。</span></p>
+      </div>
+      <div>
+        <h3><span data-l="en">Can a coding agent read my .env file?</span><span data-l="zh">编程 agent 能读到 .env 文件吗？</span></h3>
+        <p><span data-l="en">An agent that can read your project can read a .env file, and whatever it reads goes into the session. tongs keeps values in the macOS Keychain, so there is no plaintext file in the project.</span><span data-l="zh">能读项目文件的 agent 就能读 .env，读到的内容都会进入会话。tongs 把值存在 macOS 钥匙串里，项目里没有明文文件。</span></p>
+      </div>
+      <div>
+        <h3><span data-l="en">How is this different from the 1Password CLI?</span><span data-l="zh">它和 1Password CLI 有什么区别？</span></h3>
+        <p><span data-l="en"><code>op run</code> also passes secrets as environment variables and masks them in output, and it is a good fit if you already use 1Password. tongs is free and needs no account. It adds a panel an agent can open to ask for a key, approvals per agent and project, and a hook that blocks direct Keychain access.</span><span data-l="zh"><code>op run</code> 同样用环境变量传递密钥，并在输出里遮掉，如果你已经在用 1Password，它很合适。tongs 免费，不需要账户。它多了 agent 可以打开的请求面板、按 agent 和项目区分的批准，以及拦截直接访问钥匙串的 hook。</span></p>
+      </div>
+      <div>
+        <h3><span data-l="en">Which agents does it work with?</span><span data-l="zh">支持哪些 agent？</span></h3>
+        <p><span data-l="en"><code>tongs setup</code> supports Claude Code and Codex. Other agents can follow the commands in /llms.txt, but no hook is installed for them.</span><span data-l="zh"><code>tongs setup</code> 支持 Claude Code 和 Codex。其他 agent 可以照 /llms.txt 使用这些命令，但不会装 hook。</span></p>
+      </div>
+      <div>
+        <h3><span data-l="en">Does it send my keys anywhere?</span><span data-l="zh">它会把 key 发到别的地方吗？</span></h3>
+        <p><span data-l="en">tongs makes no network requests. A value goes only to the command you run with it, and that command can send it wherever it normally would.</span><span data-l="zh">tongs 本身不发任何网络请求。值只会交给你用它运行的命令，这条命令会把它发到哪里，就和平时一样。</span></p>
+      </div>
+      <div>
+        <h3><span data-l="en">Does it work without Touch ID, or on Linux and Windows?</span><span data-l="zh">没有 Touch ID 能用吗？支持 Linux 和 Windows 吗？</span></h3>
+        <p><span data-l="en">A Mac without Touch ID asks for your login password instead. tongs runs only on macOS 15 or later, because it depends on the Keychain.</span><span data-l="zh">没有 Touch ID 的 Mac 会改为询问登录密码。tongs 只支持 macOS 15 及以上，因为它依赖钥匙串。</span></p>
+      </div>
+    </div>
   </div>
 </section>
 

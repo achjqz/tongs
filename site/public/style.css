@@ -46,9 +46,6 @@ a { color: inherit; }
 ::selection { background: rgb(232 200 142 / .28); }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
-/* Both languages are in the markup; lang.js sets <html lang> before first paint. */
-html[lang^="zh"] [data-l="en"], html:not([lang^="zh"]) [data-l="zh"] { display: none; }
-
 .wrap {
   width: 100%;
   max-width: 1240px;
@@ -76,7 +73,7 @@ html[lang^="zh"] [data-l="en"], html:not([lang^="zh"]) [data-l="zh"] { display: 
 .bar-nav { display: flex; align-items: center; gap: 24px; font-size: 14px; color: var(--fg-2); }
 .bar-nav a { text-decoration: none; transition: color .15s; }
 .bar-nav a:hover { color: var(--fg); }
-.lang {
+.bar-nav .lang {
   font: 500 12.500px/1 var(--body);
   color: var(--fg-2);
   background: rgb(255 255 255 / .05);
@@ -86,11 +83,12 @@ html[lang^="zh"] [data-l="en"], html:not([lang^="zh"]) [data-l="zh"] { display: 
   cursor: pointer;
   transition: color .15s, background .15s;
 }
-.lang:hover { color: var(--fg); background: rgb(255 255 255 / .09); }
+.bar-nav .lang:hover { color: var(--fg); background: rgb(255 255 255 / .09); }
 
 /* Hero */
 .hero { position: relative; isolation: isolate; margin-top: -59px; overflow: hidden; }
-#forge { position: absolute; inset: 0; z-index: -1; display: block; width: 100%; height: 100%; }
+#forge { position: absolute; inset: 0; z-index: -1; display: block; width: 100%; height: 100%; opacity: 0; transition: opacity 1.100s ease-out; }
+#forge.lit { opacity: 1; }
 .hero-body { padding-block: clamp(150px, 15vw, 190px) clamp(110px, 11vw, 150px); }
 h1 {
   max-width: 11.500em;
@@ -432,6 +430,12 @@ code { font: 450 .9em/1 var(--mono); }
 .scrub-output td { width: 100%; padding: 10px 18px 10px 0; white-space: nowrap; vertical-align: top; }
 .scrub-output tr + tr th, .scrub-output tr + tr td { border-top: 1px solid rgb(255 255 255 / .05); }
 
+.faq { display: grid; }
+.faq > div { padding-block: 18px; border-top: 1px solid var(--line); }
+.faq > div:first-child { border-top: 0; padding-top: 4px; }
+.faq p { margin: 6px 0 0; color: var(--fg-2); text-wrap: pretty; }
+.faq code { color: var(--fg); }
+
 .limit-list { margin: 0; padding: 0; list-style: none; color: var(--fg-2); }
 .limit-list li { padding-block: 14px; border-top: 1px solid var(--line); text-wrap: pretty; }
 .limit-list li:first-child { border-top: 0; padding-top: 4px; }
@@ -491,7 +495,7 @@ code { font: 450 .9em/1 var(--mono); }
   body { font-size: 16px; }
   .wrap { padding-left: max(18px, env(safe-area-inset-left, 0px)); padding-right: max(18px, env(safe-area-inset-right, 0px)); }
   .bar-nav { gap: 12px; }
-  .bar-nav a:not([href^="https"]) { display: none; }
+  .bar-nav a:not([href^="https"], .lang) { display: none; }
   .ask-row { flex-direction: column; align-items: stretch; }
   .demo-win { height: 520px; }
   .demo-term { padding: 14px 14px 18px; font-size: 12.500px; }
