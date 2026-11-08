@@ -18,7 +18,7 @@ document.querySelectorAll("[data-copy]").forEach((button) => {
     const source = document.getElementById(button.dataset.copy);
     const original = button.innerHTML;
     try {
-      await navigator.clipboard.writeText(source.textContent);
+      await navigator.clipboard.writeText(source.innerText.trim());
       button.textContent = isZh() ? "已复制" : "Copied";
     } catch (e) {
       const range = document.createRange();
@@ -304,6 +304,12 @@ renderScrub();
       else button.removeAttribute("aria-current");
     });
     caption.textContent = script[index].caption;
+    progress(index, 0);
+  }
+  function progress(index, fraction) {
+    [...chapters.children].forEach((button, i) => {
+      button.style.setProperty("--fill", i < index ? 1 : i > index ? 0 : fraction);
+    });
   }
 
   // Replays everything before the chosen chapter instantly, then runs from there.
@@ -316,13 +322,18 @@ renderScrub();
     if (still) {
       for (const step of script[index].steps) await exec(step, true, id);
       closeOpenSheets();
+      progress(index, 1);
       return;
     }
     try {
       for (let i = index; ; i = (i + 1) % script.length) {
         if (i === 0 && i !== index) reset();
         show(i);
-        for (const step of script[i].steps) await exec(step, false, id);
+        const steps = script[i].steps;
+        for (let s = 0; s < steps.length; s++) {
+          await exec(steps[s], false, id);
+          progress(i, (s + 1) / steps.length);
+        }
         if (i === script.length - 1) index = -1;
       }
     } catch (e) {
@@ -338,6 +349,7 @@ renderScrub();
       const button = document.createElement("button");
       button.type = "button";
       button.textContent = scene.label;
+      button.append(Object.assign(document.createElement("i"), { ariaHidden: "true" }));
       button.addEventListener("click", () => { setPaused(false); playFrom(i); });
       chapters.append(button);
     });
@@ -364,107 +376,19 @@ renderScrub();
   playFrom(0);
 })();
 
-/* The plate under the demo: brushed metal that follows the system theme, lit by the pointer. */
-(function plate() {
-  const canvas = document.getElementById("steel");
-  const gl = canvas.getContext("webgl", { antialias: false, alpha: false, powerPreference: "low-power" });
-  if (!gl) { canvas.remove(); return; }
-
-  const fragment = `
-    precision highp float;
-    uniform vec2 res;
-    uniform vec2 light;
-    uniform float tone;
-
-    float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
-    float noise(vec2 p) {
-      vec2 i = floor(p), f = fract(p);
-      f = f * f * (3.0 - 2.0 * f);
-      return mix(mix(hash(i), hash(i + vec2(1, 0)), f.x),
-                 mix(hash(i + vec2(0, 1)), hash(i + vec2(1, 1)), f.x), f.y);
+/* Sections rise in once as they reach the viewport. Without JS, or with reduced motion, they are just there. */
+(function reveal() {
+  const items = document.querySelectorAll(".reveal");
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches || !("IntersectionObserver" in window)) {
+    items.forEach((item) => item.classList.add("in"));
+    return;
+  }
+  const seen = new IntersectionObserver((entries) => {
+    for (const entry of entries) {
+      if (!entry.isIntersecting) continue;
+      entry.target.classList.add("in");
+      seen.unobserve(entry.target);
     }
-    void main() {
-      vec2 uv = gl_FragCoord.xy / res;
-      float px = gl_FragCoord.y;
-      // Long brushing marks along x, a few pixels tall whatever the plate's size.
-      float grain = noise(vec2(uv.x * 26.0, px * 1.15)) * 0.45
-                  + noise(vec2(uv.x * 70.0 + 3.0, px * 2.1)) * 0.35
-                  + noise(vec2(uv.x * 10.0, px * 0.42)) * 0.2;
-
-      vec3 base = mix(vec3(0.082, 0.094, 0.114), vec3(0.760, 0.772, 0.790), tone);
-      float contrast = mix(0.34, 0.11, tone);
-      vec3 color = base * (1.0 - contrast * 0.5 + grain * contrast);
-
-      // Brushed metal reflects light as a soft vertical band that breaks up along the grain.
-      float x = uv.x - light.x;
-      float band = exp(-x * x * 7.0) * (0.65 + 0.35 * (1.0 - abs(uv.y - light.y)));
-      color += mix(vec3(0.075, 0.082, 0.095), vec3(0.150, 0.150, 0.150), tone) * band * (0.35 + pow(grain, 3.0) * 1.1);
-      gl_FragColor = vec4(color, 1.0);
-    }`;
-
-  function compile(type, source) {
-    const shader = gl.createShader(type);
-    gl.shaderSource(shader, source);
-    gl.compileShader(shader);
-    return gl.getShaderParameter(shader, gl.COMPILE_STATUS) ? shader : null;
-  }
-  const vs = compile(gl.VERTEX_SHADER, "attribute vec2 a; void main(){ gl_Position = vec4(a, 0.0, 1.0); }");
-  const fs = compile(gl.FRAGMENT_SHADER, fragment);
-  if (!vs || !fs) { canvas.remove(); return; }
-  const program = gl.createProgram();
-  gl.attachShader(program, vs);
-  gl.attachShader(program, fs);
-  gl.linkProgram(program);
-  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) { canvas.remove(); return; }
-  gl.useProgram(program);
-  gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
-  const position = gl.getAttribLocation(program, "a");
-  gl.enableVertexAttribArray(position);
-  gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
-  const uRes = gl.getUniformLocation(program, "res");
-  const uLight = gl.getUniformLocation(program, "light");
-  const uTone = gl.getUniformLocation(program, "tone");
-
-  const dark = matchMedia("(prefers-color-scheme: dark)");
-  const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const light = { x: 0.3, y: 0.7 }, target = { x: 0.3, y: 0.7 };
-  let frame = 0;
-
-  function draw() {
-    gl.uniform2f(uRes, canvas.width, canvas.height);
-    gl.uniform2f(uLight, light.x, light.y);
-    gl.uniform1f(uTone, dark.matches ? 0 : 1);
-    gl.drawArrays(gl.TRIANGLES, 0, 3);
-  }
-  function tick() {
-    frame = 0;
-    light.x += (target.x - light.x) * 0.07;
-    light.y += (target.y - light.y) * 0.07;
-    draw();
-    if (Math.abs(target.x - light.x) + Math.abs(target.y - light.y) > 0.002) frame = requestAnimationFrame(tick);
-  }
-  function resize() {
-    const box = canvas.getBoundingClientRect();
-    const ratio = Math.min(devicePixelRatio || 1, 1.5);
-    const width = Math.round(box.width * ratio), height = Math.round(box.height * ratio);
-    if (canvas.width === width && canvas.height === height) return;
-    canvas.width = width;
-    canvas.height = height;
-    gl.viewport(0, 0, width, height);
-    draw();
-  }
-  new ResizeObserver(resize).observe(canvas);
-  resize();
-  dark.addEventListener("change", draw);
-  if (!still) {
-    canvas.parentElement.addEventListener("pointermove", (event) => {
-      if (event.pointerType === "touch") return;
-      const box = canvas.getBoundingClientRect();
-      target.x = (event.clientX - box.left) / box.width;
-      target.y = 1 - (event.clientY - box.top) / box.height;
-      if (!frame) frame = requestAnimationFrame(tick);
-    });
-  }
+  }, { rootMargin: "0px 0px -8% 0px" });
+  items.forEach((item) => seen.observe(item));
 })();
-

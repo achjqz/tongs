@@ -22,6 +22,7 @@ enum Setup {
     - Never print, echo, write to a file, or transform (base64, rev, hex…) a secret value, and don't run `env`/`printenv` under `tongs run`.
     - Don't read the Keychain with `security` or look for values elsewhere; a guard hook blocks that.
     - The first use of a secret in a project asks the user for Touch ID. If it is declined, stop and tell the user instead of looking for another way.
+    - `tongs request` and the first `tongs run` of a secret wait for the user. Give them a long timeout, such as 10 minutes, so the dialog isn't killed while the user is still fetching the key.
     - If the user pastes a secret into the chat anyway, tell them it is now in the transcript and should be rotated, then store the new one with `tongs request`.
     """
 

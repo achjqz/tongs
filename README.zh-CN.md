@@ -30,7 +30,13 @@ macOS 15 及以上。录入面板在 macOS 26+ 使用 Liquid Glass，在 15 上�
 
 ## 安装
 
-用 Homebrew：
+把下面这段话贴给 Claude Code 或 Codex，剩下的它会做。[llms.txt](https://tongs.roamake.com/llms.txt) 是一页专门写给 agent 的说明。
+
+```text
+按照 https://tongs.roamake.com/llms.txt 的说明帮我安装 tongs。改动配置之前，先告诉我会改什么。
+```
+
+或者自己用 Homebrew 安装：
 
 ```bash
 brew install achjqz/tap/tongs
@@ -39,8 +45,8 @@ brew install achjqz/tap/tongs
 或者下载编译好的程序（通用二进制，Intel 和 Apple 芯片都能用）：
 
 ```bash
-curl -fsSL https://github.com/achjqz/tongs/releases/latest/download/tongs-macos-universal.tar.gz | tar xz
-mv tongs ~/.local/bin/
+mkdir -p ~/.local/bin
+curl -fsSL https://github.com/achjqz/tongs/releases/latest/download/tongs-macos-universal.tar.gz | tar xz -C ~/.local/bin tongs
 ```
 
 或者从源码构建（需要 Xcode 26 或 Swift 6.2 工具链）：

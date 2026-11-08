@@ -1,0 +1,83 @@
+# tongs
+
+> A macOS command-line tool that lets coding agents use API keys, tokens and passwords by name, without the value entering the conversation. Values live in the macOS Keychain. The user pastes them into a native panel and approves use with Touch ID.
+
+This page is written for coding agents. If a person sent you here, they want you to do the install below. The page for people is https://tongs.roamake.com and the source is https://github.com/achjqz/tongs
+
+## Install
+
+Only do this if the user asked you to. Requires macOS 15 or later: check with `sw_vers -productVersion`, and stop and say so if it is older or not macOS.
+
+Run tongs outside your sandbox, because agent sandboxes block the Keychain, Touch ID and the panel. If you run in a sandbox, ask the user to approve running these commands without it.
+
+1. Install the binary.
+
+   With Homebrew, if `command -v brew` finds it:
+
+       brew install achjqz/tap/tongs
+
+   Without Homebrew:
+
+       cd "$(mktemp -d)"
+       curl -fsSLO https://github.com/achjqz/tongs/releases/latest/download/tongs-macos-universal.tar.gz
+       curl -fsSLO https://github.com/achjqz/tongs/releases/latest/download/tongs-macos-universal.tar.gz.sha256
+       shasum -a 256 -c tongs-macos-universal.tar.gz.sha256
+       mkdir -p ~/.local/bin
+       tar xzf tongs-macos-universal.tar.gz -C ~/.local/bin tongs
+
+   If `~/.local/bin` is not on the user's PATH, tell them. Don't edit their shell profile without asking.
+
+2. Check it with `tongs doctor`. Every line should start with ✓. A ✗ usually means you are still inside a sandbox.
+
+3. Preview the agent setup. Use `claude` if you are Claude Code and `codex` if you are Codex:
+
+       tongs setup claude
+
+   This changes nothing. It prints the files it would write: a PreToolUse hook that blocks direct Keychain access, plus instructions for you (a skill for Claude Code; for Codex an AGENTS.md block and rules in `~/.codex/rules/tongs.rules`). Show the user this list and ask before going on. If they use the other agent too, offer to set it up as well.
+
+4. After the user agrees, apply it:
+
+       tongs setup claude --apply
+
+   Each changed file keeps one `.tongs-backup` copy.
+
+5. Tell the user to restart the agent, because the hook and instructions load when a session starts. Codex may also ask them to trust the new hook in `/hooks`. Mention that `tongs setup claude --remove --apply` undoes this, and that stored secrets are not touched by it.
+
+Don't create a test secret unless the user asks. Other agents can use the commands below, but no setup exists for them yet, so no hook guards the Keychain.
+
+## Use
+
+- `tongs ls` lists the secrets usable in the current project, with scope and description, never values. It never prompts. `tongs ls --json` is available.
+- `tongs run NAME [NAME...] -- <command>` runs the command with each NAME as an environment variable of the same name. Output is filtered as it streams, and a value prints as `‹redacted:NAME›`.
+- `tongs request NAME --why "<what it is for>" [--url <https page where the user creates it>] [--global]` opens a panel where the user pastes the secret. You learn the name, length and kind of key, not the value.
+
+Your shell expands `$NAME` before tongs runs, when it is still empty. If the command line itself needs the value, wrap it in single quotes:
+
+    tongs run GH_TOKEN -- sh -c 'curl -H "Authorization: Bearer $GH_TOKEN" https://api.github.com/user'
+
+Both `tongs request` and the first `tongs run` of a key wait for the user, so give them a long timeout, such as 10 minutes. A two-minute limit can kill the panel while the user is still fetching the key.
+
+### Names and scopes
+
+- Name a secret after the environment variable the consuming tool documents: `STRIPE_SECRET_KEY`, `DATABASE_URL`, `GH_TOKEN`. Don't put the project in the name.
+- A secret belongs to the current project (the git repository's directory name; worktrees count as their main repository) or is global. `tongs run NAME` uses the project's NAME first, then the global one.
+- `tongs request` stores in the current project by default. Pass `--global` for credentials of the user's own accounts that every project shares. The user can change the scope in the panel.
+
+### Rules
+
+- Never ask the user to paste a secret into the chat. If they do anyway, tell them it is now in the transcript and should be rotated, then store the new one with `tongs request`.
+- Never print, echo, write to a file, or transform (base64, rev, hex) a secret value. Don't run `env` or `printenv` under `tongs run`.
+- Don't read the Keychain with `security` or look for values elsewhere.
+- Don't pipe a value into `tongs add`. That command is for the user.
+
+## Only the user can do these
+
+- Paste the value into the `tongs request` panel.
+- Approve with Touch ID. The first use of a secret by an agent in a project asks for it, and the approval lasts 12 hours.
+- Answer the Keychain password prompt that appears once per secret after an upgrade. They should choose Always Allow.
+
+Never drive these dialogs with UI automation. If the user declines, the command fails with a message saying so. Stop and tell them, and don't look for another way to get the value.
+
+## Limits
+
+tongs prevents accidental leaks by a well-behaved agent. It doesn't contain a hostile one. A command that transforms the value or writes it to a file isn't filtered, and `tongs run` runs its command outside the sandbox. Threat model: https://github.com/achjqz/tongs/blob/main/SECURITY.md

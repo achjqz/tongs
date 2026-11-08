@@ -30,7 +30,13 @@ macOS 15 or later. The request panel uses Liquid Glass on macOS 26+ and system m
 
 ## Install
 
-With Homebrew:
+Paste this into Claude Code or Codex and it does the rest. [llms.txt](https://tongs.roamake.com/llms.txt) is a page of instructions written for agents.
+
+```text
+Install tongs by following https://tongs.roamake.com/llms.txt. Show me what it will change before applying anything.
+```
+
+Or install it yourself with Homebrew:
 
 ```bash
 brew install achjqz/tap/tongs
@@ -39,8 +45,8 @@ brew install achjqz/tap/tongs
 Or download the binary (universal, Intel and Apple Silicon):
 
 ```bash
-curl -fsSL https://github.com/achjqz/tongs/releases/latest/download/tongs-macos-universal.tar.gz | tar xz
-mv tongs ~/.local/bin/
+mkdir -p ~/.local/bin
+curl -fsSL https://github.com/achjqz/tongs/releases/latest/download/tongs-macos-universal.tar.gz | tar xz -C ~/.local/bin tongs
 ```
 
 Or build from source with Xcode 26 or a Swift 6.2 toolchain:

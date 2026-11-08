@@ -5,18 +5,19 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>tongs</title>
 <meta name="description" content="Let coding agents use your API keys without seeing them. Keys stay in the macOS Keychain, you approve with Touch ID, and values are masked in command output.">
-<meta name="theme-color" media="(prefers-color-scheme: light)" content="#f6f7f8">
-<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0e1116">
+<meta name="theme-color" content="#0a0b0d">
 <meta property="og:title" content="tongs">
 <meta property="og:description" content="Let coding agents use your API keys without seeing them.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://tongs.roamake.com/">
 <meta property="og:image" content="https://tongs.roamake.com/img/panel-en.png">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="alternate" type="text/plain" href="/llms.txt" title="Instructions for coding agents">
 <link rel="preload" href="/fonts/body.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/style.css">
 <script src="/lang.js"></script>
 <script src="/main.js" defer></script>
+<script src="/forge.js" defer></script>
 </head>
 <body>
 
@@ -31,6 +32,7 @@
       <span>tongs</span>
     </a>
     <nav class="bar-nav">
+      <a href="#agents"><span data-l="en">For agents</span><span data-l="zh">给 agent</span></a>
       <a href="#how"><span data-l="en">How it works</span><span data-l="zh">工作方式</span></a>
       <a href="#commands"><span data-l="en">Commands</span><span data-l="zh">命令</span></a>
       <a href="#install"><span data-l="en">Install</span><span data-l="zh">安装</span></a>
@@ -45,7 +47,8 @@
 <main id="top">
 
 <section class="hero">
-  <div class="wrap">
+  <canvas id="forge" aria-hidden="true"></canvas>
+  <div class="wrap hero-body">
     <h1>
       <span data-l="en">Let coding agents use your API keys without seeing them</span>
       <span data-l="zh">让编程 agent 使用你的 API key，而看不到它的值</span>
@@ -54,62 +57,71 @@
       <span data-l="en">tongs stores keys in the macOS Keychain. An agent refers to a key by name, you approve with Touch ID, and the value is passed to the command as an environment variable. If the command prints the value, it is masked before the agent reads the output.</span>
       <span data-l="zh">tongs 把 key 存在 macOS 钥匙串里。agent 通过名字引用 key，你用 Touch ID 批准，值以环境变量的形式传给命令。如果命令把值打印出来，它会在 agent 读到输出之前被遮掉。</span>
     </p>
-    <div class="install-line">
-      <code id="cmd-brew">brew install achjqz/tap/tongs</code>
-      <button class="copy" type="button" data-copy="cmd-brew"><span data-l="en">Copy</span><span data-l="zh">复制</span></button>
+    <div class="ask">
+      <p class="ask-label"><span data-l="en">Paste this into Claude Code or Codex</span><span data-l="zh">把这段话贴给 Claude Code 或 Codex</span></p>
+      <div class="ask-row">
+        <p class="ask-text" id="prompt-hero">
+          <span data-l="en">Install tongs by following https://tongs.roamake.com/llms.txt. Show me what it will change before applying anything.</span>
+          <span data-l="zh">按照 https://tongs.roamake.com/llms.txt 的说明帮我安装 tongs。改动配置之前，先告诉我会改什么。</span>
+        </p>
+        <button class="copy copy-solid" type="button" data-copy="prompt-hero"><span data-l="en">Copy</span><span data-l="zh">复制</span></button>
+      </div>
     </div>
     <p class="meta">
-      <span data-l="en">macOS 15 or later. Works with Claude Code and Codex. Open source under Apache-2.0.</span>
-      <span data-l="zh">需要 macOS 15 及以上。支持 Claude Code 和 Codex。开源，使用 Apache-2.0 许可证。</span>
+      <span data-l="en">Or install it yourself:</span><span data-l="zh">或者自己装：</span>
+      <code>brew install achjqz/tap/tongs</code>
+      <br>
+      <span data-l="en">macOS 15 or later. Open source under Apache-2.0.</span>
+      <span data-l="zh">需要 macOS 15 及以上。开源，使用 Apache-2.0 许可证。</span>
     </p>
   </div>
 </section>
 
 <section class="demo-section" aria-label="Demo">
   <div class="wrap">
-    <div class="stage" id="stage">
-      <canvas id="steel" aria-hidden="true"></canvas>
-      <div class="demo-win">
-        <div class="demo-bar">Claude Code · ~/shop</div>
-        <div class="demo-term" id="demo-term"></div>
+    <div class="demo-win" id="stage">
+      <div class="demo-bar">
+        <span class="lights" aria-hidden="true"><i></i><i></i><i></i></span>
+        <span>Claude Code · ~/shop</span>
+      </div>
+      <div class="demo-term" id="demo-term"></div>
 
-        <div class="sheet panel" id="demo-panel" hidden>
-          <div class="panel-head">
-            <span class="panel-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" width="22" height="22"><path d="M7.500 8a4.500 4.500 0 1 0 4.300 5.800H15l1.500 1.500 1.500-1.500 1.500 1.500 2-2.300-1.700-1.700h-8a4.500 4.500 0 0 0-4.300-3.300Zm-1 3.300a1.300 1.300 0 1 1 0 2.600 1.300 1.300 0 0 1 0-2.600Z"/></svg>
-            </span>
-            <div>
-              <p class="panel-title"><span data-l="en">Claude Code is asking for a secret</span><span data-l="zh">Claude Code 请求一个密钥</span></p>
-              <span class="panel-chip">STRIPE_SECRET_KEY</span>
-            </div>
-          </div>
-          <p class="panel-row"><span data-l="en">Project shop</span><span data-l="zh">项目 shop</span></p>
-          <p class="panel-row"><span data-l="en">Deploy script creates a Stripe payment link</span><span data-l="zh">部署脚本要创建 Stripe 支付链接</span></p>
-          <div class="panel-field" id="demo-field">
-            <span class="panel-placeholder" id="demo-placeholder"><span data-l="en">Paste the secret</span><span data-l="zh">粘贴密钥</span></span>
-            <span class="panel-dots" id="demo-dots" hidden>••••••••••••••</span>
-            <span class="panel-summary" id="demo-summary" hidden><span data-l="en">107 characters · Stripe live secret key</span><span data-l="zh">107 个字符 · Stripe live secret key</span></span>
-          </div>
-          <div class="panel-scope">
-            <span class="panel-scope-on"><span data-l="en">Project shop only</span><span data-l="zh">仅项目 shop</span></span>
-            <span><span data-l="en">All projects</span><span data-l="zh">所有项目</span></span>
-          </div>
-          <div class="panel-buttons">
-            <span class="panel-btn"><span data-l="en">Cancel</span><span data-l="zh">取消</span></span>
-            <span class="panel-btn panel-save" id="demo-save"><span data-l="en">Save</span><span data-l="zh">保存</span></span>
+      <div class="sheet panel" id="demo-panel" hidden>
+        <div class="panel-head">
+          <span class="panel-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="22" height="22"><path d="M7.500 8a4.500 4.500 0 1 0 4.300 5.800H15l1.500 1.500 1.500-1.500 1.500 1.500 2-2.300-1.700-1.700h-8a4.500 4.500 0 0 0-4.300-3.300Zm-1 3.300a1.300 1.300 0 1 1 0 2.600 1.300 1.300 0 0 1 0-2.600Z"/></svg>
+          </span>
+          <div>
+            <p class="panel-title"><span data-l="en">Claude Code is asking for a secret</span><span data-l="zh">Claude Code 请求一个密钥</span></p>
+            <span class="panel-chip">STRIPE_SECRET_KEY</span>
           </div>
         </div>
-
-        <div class="sheet touch" id="demo-touch" hidden>
-          <svg class="touch-print" id="demo-print" viewBox="0 0 48 48" width="44" height="44" aria-hidden="true">
-            <path d="M24 7c-9 0-16 7-16 16v3M40 26v-3c0-9-7-16-16-16M14 34c1-4 2-7 2-11a8 8 0 0 1 16 0c0 5-1 10-3 15M21 41c2-5 3-11 3-18M34 34c.6-2 1-4 1.300-6"/>
-          </svg>
-          <p class="touch-title">Touch ID</p>
-          <p class="touch-line">
-            <span data-l="en">“tongs” is trying to give Claude Code shop/STRIPE_SECRET_KEY</span>
-            <span data-l="zh">“tongs”正在尝试向 Claude Code 提供 shop/STRIPE_SECRET_KEY</span>
-          </p>
+        <p class="panel-row"><span data-l="en">Project shop</span><span data-l="zh">项目 shop</span></p>
+        <p class="panel-row"><span data-l="en">Deploy script creates a Stripe payment link</span><span data-l="zh">部署脚本要创建 Stripe 支付链接</span></p>
+        <div class="panel-field" id="demo-field">
+          <span class="panel-placeholder" id="demo-placeholder"><span data-l="en">Paste the secret</span><span data-l="zh">粘贴密钥</span></span>
+          <span class="panel-dots" id="demo-dots" hidden>••••••••••••••</span>
+          <span class="panel-summary" id="demo-summary" hidden><span data-l="en">107 characters · Stripe live secret key</span><span data-l="zh">107 个字符 · Stripe live secret key</span></span>
         </div>
+        <div class="panel-scope">
+          <span class="panel-scope-on"><span data-l="en">Project shop only</span><span data-l="zh">仅项目 shop</span></span>
+          <span><span data-l="en">All projects</span><span data-l="zh">所有项目</span></span>
+        </div>
+        <div class="panel-buttons">
+          <span class="panel-btn"><span data-l="en">Cancel</span><span data-l="zh">取消</span></span>
+          <span class="panel-btn panel-save" id="demo-save"><span data-l="en">Save</span><span data-l="zh">保存</span></span>
+        </div>
+      </div>
+
+      <div class="sheet touch" id="demo-touch" hidden>
+        <svg class="touch-print" id="demo-print" viewBox="0 0 48 48" width="44" height="44" aria-hidden="true">
+          <path d="M24 7c-9 0-16 7-16 16v3M40 26v-3c0-9-7-16-16-16M14 34c1-4 2-7 2-11a8 8 0 0 1 16 0c0 5-1 10-3 15M21 41c2-5 3-11 3-18M34 34c.6-2 1-4 1.300-6"/>
+        </svg>
+        <p class="touch-title">Touch ID</p>
+        <p class="touch-line">
+          <span data-l="en">“tongs” is trying to give Claude Code shop/STRIPE_SECRET_KEY</span>
+          <span data-l="zh">“tongs”正在尝试向 Claude Code 提供 shop/STRIPE_SECRET_KEY</span>
+        </p>
       </div>
     </div>
 
@@ -122,25 +134,223 @@
   </div>
 </section>
 
-<section class="section">
+<section class="section" id="agents">
   <div class="wrap">
-    <h2>
-      <span data-l="en">Why not paste the key into the chat</span>
-      <span data-l="zh">为什么不直接把 key 贴进对话</span>
-    </h2>
-    <p class="prose">
-      <span data-l="en">Claude Code and Codex save each session to disk and send it back to the model on every turn. A key that is pasted into the chat, or printed by a command, stays in that history. Here is the same task both ways.</span>
-      <span data-l="zh">Claude Code 和 Codex 会把每次会话存到磁盘，并在每一轮重新发给模型。贴进对话的 key，或者被命令打印出来的 key，都会留在这份记录里。下面是同一件事的两种做法。</span>
-    </p>
-    <div class="two-col">
-      <figure class="term">
+    <div class="agents-head reveal">
+      <h2>
+        <span data-l="en">Your agent installs it and uses it</span>
+        <span data-l="zh">由 agent 来安装和使用</span>
+      </h2>
+      <p class="prose">
+        <span data-l="en">Give your agent the prompt above. It reads <a class="link" href="/llms.txt">/llms.txt</a>, a page of instructions written for agents, and does the install. Your part is the few steps that need a person.</span>
+        <span data-l="zh">把上面那段话发给 agent。它会读 <a class="link" href="/llms.txt">/llms.txt</a>，这是一页专门写给 agent 的说明，然后完成安装。你只需要做几件必须由人来做的事。</span>
+      </p>
+    </div>
+
+    <div class="agents-grid">
+      <div class="lanes reveal">
+        <div class="lane-head" aria-hidden="true">
+          <span>Agent</span>
+          <span><span data-l="en">You</span><span data-l="zh">你</span></span>
+        </div>
+
+        <h3 class="lane-group"><span data-l="en">Installing</span><span data-l="zh">安装时</span></h3>
+        <ol class="lane-list">
+          <li class="by-agent">
+            <code>brew install achjqz/tap/tongs</code>
+            <span data-l="en">Installs it, then runs <code>tongs doctor</code> to check the Keychain, Touch ID and panel.</span>
+            <span data-l="zh">安装后运行 <code>tongs doctor</code>，检查钥匙串、Touch ID 和面板是否可用。</span>
+          </li>
+          <li class="by-agent">
+            <code>tongs setup claude</code>
+            <span data-l="en">Prints the hook and instructions it would add. Changes nothing yet.</span>
+            <span data-l="zh">列出要添加的 hook 和说明，这一步不改动任何文件。</span>
+          </li>
+          <li class="by-you">
+            <span data-l="en">Read the list and say yes.</span>
+            <span data-l="zh">看一下改动，同意。</span>
+          </li>
+          <li class="by-agent">
+            <code>tongs setup claude --apply</code>
+            <span data-l="en">Writes the changes. Each file keeps a backup.</span>
+            <span data-l="zh">写入改动，每个文件都留一份备份。</span>
+          </li>
+          <li class="by-you">
+            <span data-l="en">Restart the agent so it loads the hook.</span>
+            <span data-l="zh">重启 agent，让 hook 生效。</span>
+          </li>
+        </ol>
+
+        <h3 class="lane-group"><span data-l="en">After that</span><span data-l="zh">之后</span></h3>
+        <ol class="lane-list">
+          <li class="by-you">
+            <span data-l="en">Ask for the work as usual. You don't have to mention tongs.</span>
+            <span data-l="zh">照常提需求，不用提 tongs。</span>
+          </li>
+          <li class="by-agent">
+            <code>tongs ls</code>
+            <span data-l="en">Checks whether this project already has the key.</span>
+            <span data-l="zh">看这个项目有没有需要的 key。</span>
+          </li>
+          <li class="by-agent">
+            <code>tongs request STRIPE_SECRET_KEY --why "…"</code>
+            <span data-l="en">If not, opens the panel and waits.</span>
+            <span data-l="zh">没有的话，打开面板并等待。</span>
+          </li>
+          <li class="by-you">
+            <span data-l="en">Paste the key into the panel.</span>
+            <span data-l="zh">在面板里粘贴 key。</span>
+          </li>
+          <li class="by-agent">
+            <code>tongs run STRIPE_SECRET_KEY -- npm run deploy</code>
+            <span data-l="en">Runs the command and reads the masked output.</span>
+            <span data-l="zh">运行命令，读到的输出里 key 已被遮掉。</span>
+          </li>
+          <li class="by-you">
+            <span data-l="en">Touch ID the first time. The approval lasts 12 hours.</span>
+            <span data-l="zh">第一次要 Touch ID，批准有效 12 小时。</span>
+          </li>
+        </ol>
+      </div>
+
+      <div class="agents-side">
+        <figure class="sheet-doc reveal">
+          <figcaption>
+            <span data-l="en">What your agent reads</span><span data-l="zh">agent 读到的内容</span>
+            <a href="/llms.txt">llms.txt</a>
+          </figcaption>
+<pre tabindex="0">## Rules
+
+- Never ask the user to paste a secret into
+  the chat.
+- Never print, echo, write to a file, or
+  transform a secret value.
+- Don't read the Keychain with `security` or
+  look for values elsewhere.
+
+## Only the user can do these
+
+- Paste the value into the panel.
+- Approve with Touch ID.
+
+Never drive these dialogs with UI automation.
+If the user declines, stop and tell them.</pre>
+        </figure>
+        <dl class="facts reveal">
+          <div>
+            <dt>Claude Code</dt>
+            <dd><span data-l="en">A skill and a PreToolUse hook. The skill tells the agent to use tongs whenever a command needs a credential.</span><span data-l="zh">一个 skill 和一个 PreToolUse hook。skill 会告诉 agent：命令需要凭据时就用 tongs。</span></dd>
+          </div>
+          <div>
+            <dt>Codex</dt>
+            <dd><span data-l="en">An AGENTS.md block, a hook, and rules that let <code>tongs run</code> out of the sandbox after asking you.</span><span data-l="zh">一段 AGENTS.md、一个 hook，以及一组规则：<code>tongs run</code> 询问你之后才能在沙箱外运行。</span></dd>
+          </div>
+          <div>
+            <dt><span data-l="en">Other agents</span><span data-l="zh">其他 agent</span></dt>
+            <dd><span data-l="en">They can follow the commands in /llms.txt. No hook is installed, so nothing stops them reading the Keychain directly.</span><span data-l="zh">可以照 /llms.txt 使用这些命令。但没有 hook，所以没有东西拦着它们直接读钥匙串。</span></dd>
+          </div>
+        </dl>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="how">
+  <div class="wrap">
+    <div class="reveal">
+      <h2>
+        <span data-l="en">How it works</span>
+        <span data-l="zh">工作方式</span>
+      </h2>
+      <p class="legend">
+        <span class="legend-see"><span data-l="en">Above the line: what the agent sees</span><span data-l="zh">线上：agent 看得到的</span></span>
+        <span class="legend-hide"><span data-l="en">Below the line: what happens to the value</span><span data-l="zh">线下：值经过的地方</span></span>
+      </p>
+    </div>
+    <div class="flow reveal">
+      <article class="flow-col">
+        <h3><span data-l="en">Store</span><span data-l="zh">存入</span></h3>
+        <pre class="flow-see" tabindex="0"><span class="dim">$</span> tongs request STRIPE_SECRET_KEY
+stored shop/STRIPE_SECRET_KEY (<span data-l="en">project</span><span data-l="zh">项目</span> shop, 107 chars)</pre>
+        <p class="flow-hide">
+          <span data-l="en">You paste the key into a panel that shows which agent is asking and why. It goes to the Keychain. If it is still on your clipboard, it is cleared.</span>
+          <span data-l="zh">你在面板里粘贴 key，面板上写明是哪个 agent 在要、用来做什么。key 存进钥匙串。如果剪贴板里还是这个 key，会被清空。</span>
+        </p>
+      </article>
+      <article class="flow-col">
+        <h3><span data-l="en">Approve</span><span data-l="zh">批准</span></h3>
+        <pre class="flow-see" tabindex="0"><span class="dim">$</span> tongs run STRIPE_SECRET_KEY -- npm run deploy
+tongs: waiting for Touch ID</pre>
+        <p class="flow-hide">
+          <span data-l="en">macOS asks for Touch ID the first time. The approval lasts 12 hours and applies to that agent, project and key. <code>tongs revoke</code> ends it early.</span>
+          <span data-l="zh">第一次使用时 macOS 会要求 Touch ID。批准有效 12 小时，只对这个 agent、项目和 key 生效。<code>tongs revoke</code> 可以提前撤销。</span>
+        </p>
+      </article>
+      <article class="flow-col">
+        <h3><span data-l="en">Inject</span><span data-l="zh">注入</span></h3>
+        <pre class="flow-see" tabindex="0">POST /v1/payment_links
+200 OK  plink_EXAMPLE</pre>
+        <p class="flow-hide">
+          <span data-l="en">The value is set as an environment variable for that one command, and nothing else gets it.</span>
+          <span data-l="zh">值只作为环境变量传给这一条命令，其他程序拿不到。</span>
+        </p>
+      </article>
+      <article class="flow-col">
+        <h3><span data-l="en">Filter</span><span data-l="zh">过滤</span></h3>
+        <pre class="flow-see" tabindex="0">Authorization: Bearer <span class="mask">‹redacted:STRIPE_SECRET_KEY›</span></pre>
+        <p class="flow-hide">
+          <span data-l="en">stdout and stderr are filtered as they stream. It matches the raw value and its URL-encoded and Base64 forms, including inside a Basic auth header.</span>
+          <span data-l="zh">stdout 和 stderr 会被实时过滤，能匹配原值、URL 编码和 Base64 形式，Basic auth 请求头里的也能匹配。</span>
+        </p>
+      </article>
+    </div>
+    <div class="how-notes reveal">
+      <div>
+        <h3><span data-l="en">Direct access is blocked</span><span data-l="zh">拦截直接访问</span></h3>
+        <p>
+          <span data-l="en">macOS asks for a password when another program reads a Keychain item, but not when it deletes or overwrites one. A hook stops agents calling <code>security</code> on the Keychain.</span>
+          <span data-l="zh">其他程序读取钥匙串条目时 macOS 会要密码，但删除或覆盖时不会。所以 hook 不让 agent 直接用 <code>security</code> 操作钥匙串。</span>
+        </p>
+      </div>
+      <div>
+        <h3><span data-l="en">Keys per project</span><span data-l="zh">按项目区分 key</span></h3>
+        <p>
+          <span data-l="en">A key is global or belongs to a git project. <code>tongs run NAME</code> uses the project's key first, then the global one. Worktrees count as their main repository.</span>
+          <span data-l="zh">key 可以是全局的，也可以属于某个 git 项目。<code>tongs run NAME</code> 优先用项目的 key，没有再用全局的。worktree 算作它的主仓库。</span>
+        </p>
+      </div>
+      <div>
+        <h3><span data-l="en">No background process</span><span data-l="zh">没有后台进程</span></h3>
+        <p>
+          <span data-l="en">There is no daemon or menu bar app. Each prompt is opened by the command that needs it. <code>tongs log</code> records each use, without values.</span>
+          <span data-l="zh">没有常驻服务，也没有菜单栏图标。弹窗由需要它的命令打开。<code>tongs log</code> 记录每次使用，不含值。</span>
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap split">
+    <div class="split-head reveal">
+      <h2>
+        <span data-l="en">Why not paste the key into the chat</span>
+        <span data-l="zh">为什么不直接把 key 贴进对话</span>
+      </h2>
+      <p class="prose">
+        <span data-l="en">Claude Code and Codex save each session to disk and send it back to the model on every turn. A key that is pasted into the chat, or printed by a command, stays in that history.</span>
+        <span data-l="zh">Claude Code 和 Codex 会把每次会话存到磁盘，并在每一轮重新发给模型。贴进对话的 key，或者被命令打印出来的 key，都会留在这份记录里。</span>
+      </p>
+    </div>
+    <div class="compare reveal">
+      <figure class="term term-leak">
         <figcaption><span data-l="en">Key pasted into the chat</span><span data-l="zh">把 key 贴进对话</span></figcaption>
 <pre tabindex="0"><span class="dim"><span data-l="en">you:</span><span data-l="zh">你：</span></span> <span data-l="en">here's my token</span><span data-l="zh">这是我的 token</span> <span class="hot">ghp_EXAMPLE7fQ2mZk91xTb</span>
 
 <span class="dim">$</span> curl -H "Authorization: Bearer <span class="hot">ghp_EXAMPLE7fQ2mZk91xTb</span>" https://api.github.com/user
 {"login": "you"}</pre>
       </figure>
-      <figure class="term">
+      <figure class="term term-safe">
         <figcaption><span data-l="en">With tongs</span><span data-l="zh">用 tongs</span></figcaption>
 <pre tabindex="0"><span class="dim">$</span> tongs request GH_TOKEN --why "<span data-l="en">read your profile</span><span data-l="zh">读取你的资料</span>"
 stored shop/GH_TOKEN (<span data-l="en">project</span><span data-l="zh">项目</span> shop, 40 chars, looks like a GitHub token).
@@ -152,93 +362,19 @@ stored shop/GH_TOKEN (<span data-l="en">project</span><span data-l="zh">项目</
   </div>
 </section>
 
-<section class="section" id="how">
-  <div class="wrap">
-    <h2>
-      <span data-l="en">How it works</span>
-      <span data-l="zh">工作方式</span>
-    </h2>
-    <div class="how-grid">
-      <div>
-        <h3><span data-l="en">Storing a key</span><span data-l="zh">存 key</span></h3>
-        <p>
-          <span data-l="en"><code>tongs request</code> opens a panel showing which agent is asking and why. You paste the key there. The agent gets back the name, the length and the kind of key. If the key is still on your clipboard, it is cleared.</span>
-          <span data-l="zh"><code>tongs request</code> 会打开一个面板，写明是哪个 agent 在要、用来做什么，你在面板里粘贴。agent 拿到的只有名字、长度和 key 的类型。如果剪贴板里还是这个 key，会被清空。</span>
-        </p>
-      </div>
-      <div>
-        <h3><span data-l="en">Approving use</span><span data-l="zh">批准使用</span></h3>
-        <p>
-          <span data-l="en">The first time an agent uses a key in a project, macOS asks for Touch ID. The approval lasts 12 hours and applies to that agent, project and key. <code>tongs revoke</code> ends it early.</span>
-          <span data-l="zh">agent 第一次在某个项目里用某个 key 时，macOS 会要求 Touch ID。批准有效 12 小时，只对这个 agent、项目和 key 生效。<code>tongs revoke</code> 可以提前撤销。</span>
-        </p>
-      </div>
-      <div>
-        <h3><span data-l="en">Running a command</span><span data-l="zh">运行命令</span></h3>
-        <p>
-          <span data-l="en"><code>tongs run</code> sets the environment variable for that command only and filters stdout and stderr as they stream. It matches the raw value, its URL-encoded form and its Base64 form, including inside a Basic auth header.</span>
-          <span data-l="zh"><code>tongs run</code> 只给这一条命令设置环境变量，并实时过滤 stdout 和 stderr。它能匹配原值、URL 编码和 Base64 形式，Basic auth 请求头里的也能匹配。</span>
-        </p>
-      </div>
-      <div>
-        <h3><span data-l="en">Blocking direct access</span><span data-l="zh">拦截直接访问</span></h3>
-        <p>
-          <span data-l="en">macOS asks for a password when another program reads a Keychain item, but not when it deletes or overwrites one. A PreToolUse hook for Claude Code and Codex blocks agents from calling <code>security</code> on the Keychain directly.</span>
-          <span data-l="zh">其他程序读取钥匙串条目时 macOS 会要密码，但删除或覆盖时不会。所以 tongs 给 Claude Code 和 Codex 装了 PreToolUse hook，不让 agent 直接用 <code>security</code> 操作钥匙串。</span>
-        </p>
-      </div>
-      <div>
-        <h3><span data-l="en">Keys per project</span><span data-l="zh">按项目区分 key</span></h3>
-        <p>
-          <span data-l="en">A key is either global or belongs to a git project. <code>tongs run NAME</code> uses the project's key first and falls back to the global one. Worktrees count as their main repository.</span>
-          <span data-l="zh">key 可以是全局的，也可以属于某个 git 项目。<code>tongs run NAME</code> 优先用项目的 key，没有再用全局的。worktree 算作它的主仓库。</span>
-        </p>
-      </div>
-      <div>
-        <h3><span data-l="en">No background process</span><span data-l="zh">没有后台进程</span></h3>
-        <p>
-          <span data-l="en">There is no daemon or menu bar app. Each prompt is opened by the command that needs it and closes with it. <code>tongs log</code> keeps a record of each use, without values.</span>
-          <span data-l="zh">没有常驻服务，也没有菜单栏图标。弹窗由需要它的命令打开，命令结束就关闭。<code>tongs log</code> 记录每次使用，不含值。</span>
-        </p>
-      </div>
-    </div>
-  </div>
-</section>
-
-<section class="section" id="commands">
-  <div class="wrap">
-    <h2>
-      <span data-l="en">Commands</span>
-      <span data-l="zh">命令</span>
-    </h2>
-    <div class="table-scroll">
-      <table class="commands">
-        <tbody>
-          <tr><th scope="row"><code>tongs ls</code></th><td><span data-l="en">List the keys usable in this project. Shows names and descriptions, never values.</span><span data-l="zh">列出当前项目能用的 key，只显示名字和说明，不显示值。</span></td></tr>
-          <tr><th scope="row"><code>tongs run NAME -- CMD</code></th><td><span data-l="en">Run a command with the key in its environment and filter its output.</span><span data-l="zh">运行命令，把 key 放进它的环境变量，并过滤输出。</span></td></tr>
-          <tr><th scope="row"><code>tongs request NAME</code></th><td><span data-l="en">Ask the user for a key in a panel. Takes <code>--why</code>, <code>--url</code> and <code>--global</code>.</span><span data-l="zh">弹出面板向用户要 key，可以加 <code>--why</code>、<code>--url</code>、<code>--global</code>。</span></td></tr>
-          <tr><th scope="row"><code>tongs add NAME</code></th><td><span data-l="en">Store a key yourself from a hidden prompt or stdin. Replacing a key takes Touch ID.</span><span data-l="zh">自己录入 key，隐藏输入或从 stdin 读取。替换已有的 key 需要 Touch ID。</span></td></tr>
-          <tr><th scope="row"><code>tongs rm NAME</code></th><td><span data-l="en">Delete a key. Takes Touch ID.</span><span data-l="zh">删除 key，需要 Touch ID。</span></td></tr>
-          <tr><th scope="row"><code>tongs grants</code>, <code>tongs revoke</code></th><td><span data-l="en">Show and end active approvals.</span><span data-l="zh">查看和撤销当前的授权。</span></td></tr>
-          <tr><th scope="row"><code>tongs log</code></th><td><span data-l="en">Show who used which key, in which project, for which command.</span><span data-l="zh">查看谁在哪个项目、为哪条命令用了哪个 key。</span></td></tr>
-          <tr><th scope="row"><code>tongs setup claude</code>, <code>codex</code></th><td><span data-l="en">Install the hook and agent instructions. Prints the changes unless you add <code>--apply</code>; <code>--remove</code> undoes them.</span><span data-l="zh">安装 hook 和给 agent 的说明。不加 <code>--apply</code> 只打印改动，<code>--remove</code> 可以撤销。</span></td></tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
-</section>
-
 <section class="section">
-  <div class="wrap">
-    <h2>
-      <span data-l="en">Try the output filter</span>
-      <span data-l="zh">试试输出过滤</span>
-    </h2>
-    <p class="prose">
-      <span data-l="en">These are the matching rules from the CLI, running in your browser. Nothing is sent anywhere, but use a made-up value anyway.</span>
-      <span data-l="zh">这是 CLI 的匹配规则，在你的浏览器里运行，不会发送任何内容。不过还是请填一个编造的值。</span>
-    </p>
-    <div class="scrub-box">
+  <div class="wrap split">
+    <div class="split-head reveal">
+      <h2>
+        <span data-l="en">Try the output filter</span>
+        <span data-l="zh">试试输出过滤</span>
+      </h2>
+      <p class="prose">
+        <span data-l="en">These are the matching rules from the CLI, running in your browser. Nothing is sent anywhere, but use a made-up value anyway.</span>
+        <span data-l="zh">这是 CLI 的匹配规则，在你的浏览器里运行，不会发送任何内容。不过还是请填一个编造的值。</span>
+      </p>
+    </div>
+    <div class="scrub-box reveal">
       <label class="scrub-field" for="scrub-value">
         <span class="scrub-label">$GH_TOKEN</span>
         <input id="scrub-value" type="text" autocomplete="off" spellcheck="false" autocapitalize="off" value="ghp_EXAMPLE7fQ2mZk91xTb/w+x">
@@ -253,17 +389,46 @@ stored shop/GH_TOKEN (<span data-l="en">project</span><span data-l="zh">项目</
   </div>
 </section>
 
+<section class="section" id="commands">
+  <div class="wrap split">
+    <div class="split-head reveal">
+      <h2>
+        <span data-l="en">Commands</span>
+        <span data-l="zh">命令</span>
+      </h2>
+    </div>
+    <div class="table-scroll reveal">
+      <table class="commands">
+        <tbody>
+          <tr><th scope="row"><code>tongs ls</code></th><td><span data-l="en">List the keys usable in this project. Shows names and descriptions, never values.</span><span data-l="zh">列出当前项目能用的 key，只显示名字和说明，不显示值。</span></td></tr>
+          <tr><th scope="row"><code>tongs run NAME -- CMD</code></th><td><span data-l="en">Run a command with the key in its environment and filter its output.</span><span data-l="zh">运行命令，把 key 放进它的环境变量，并过滤输出。</span></td></tr>
+          <tr><th scope="row"><code>tongs request NAME</code></th><td><span data-l="en">Ask the user for a key in a panel. Takes <code>--why</code>, <code>--url</code> and <code>--global</code>.</span><span data-l="zh">弹出面板向用户要 key，可以加 <code>--why</code>、<code>--url</code>、<code>--global</code>。</span></td></tr>
+          <tr><th scope="row"><code>tongs add NAME</code></th><td><span data-l="en">Store a key yourself from a hidden prompt or stdin. Replacing a key takes Touch ID.</span><span data-l="zh">自己录入 key，隐藏输入或从 stdin 读取。替换已有的 key 需要 Touch ID。</span></td></tr>
+          <tr><th scope="row"><code>tongs rm NAME</code></th><td><span data-l="en">Delete a key. Takes Touch ID.</span><span data-l="zh">删除 key，需要 Touch ID。</span></td></tr>
+          <tr><th scope="row"><code>tongs grants</code>, <code>tongs revoke</code></th><td><span data-l="en">Show and end active approvals.</span><span data-l="zh">查看和撤销当前的授权。</span></td></tr>
+          <tr><th scope="row"><code>tongs log</code></th><td><span data-l="en">Show who used which key, in which project, for which command.</span><span data-l="zh">查看谁在哪个项目、为哪条命令用了哪个 key。</span></td></tr>
+          <tr><th scope="row"><code>tongs doctor</code></th><td><span data-l="en">Check Keychain, Touch ID and panel access from the current context.</span><span data-l="zh">检查当前环境能否访问钥匙串、Touch ID 和面板。</span></td></tr>
+          <tr><th scope="row"><code>tongs setup claude</code>, <code>codex</code></th><td><span data-l="en">Install the hook and agent instructions. Prints the changes unless you add <code>--apply</code>; <code>--remove</code> undoes them.</span><span data-l="zh">安装 hook 和给 agent 的说明。不加 <code>--apply</code> 只打印改动，<code>--remove</code> 可以撤销。</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
 <section class="section" id="limits">
-  <div class="wrap">
-    <h2>
-      <span data-l="en">What it doesn't protect against</span>
-      <span data-l="zh">它防不了什么</span>
-    </h2>
-    <p class="prose">
-      <span data-l="en">tongs is meant to stop a well-behaved agent from leaking a key by accident. It can't contain an agent that is trying to steal one.</span>
-      <span data-l="zh">tongs 的目的是防止正常工作的 agent 意外泄露 key。如果 agent 存心要偷，它拦不住。</span>
-    </p>
-    <ul class="limit-list">
+  <div class="wrap split">
+    <div class="split-head reveal">
+      <h2>
+        <span data-l="en">What it doesn't protect against</span>
+        <span data-l="zh">它防不了什么</span>
+      </h2>
+      <p class="prose">
+        <span data-l="en">tongs is meant to stop a well-behaved agent from leaking a key by accident. It can't contain an agent that is trying to steal one.</span>
+        <span data-l="zh">tongs 的目的是防止正常工作的 agent 意外泄露 key。如果 agent 存心要偷，它拦不住。</span>
+      </p>
+      <p class="prose"><a class="link" href="https://github.com/achjqz/tongs/blob/main/SECURITY.md"><span data-l="en">Full threat model in SECURITY.md</span><span data-l="zh">完整的威胁模型见 SECURITY.md</span></a></p>
+    </div>
+    <ul class="limit-list reveal">
       <li>
         <span data-l="en">A command that changes the value before printing it, or writes it to a file, isn't filtered.</span>
         <span data-l="zh">命令把值变换后再打印，或者写进文件，都不会被过滤。</span>
@@ -285,17 +450,16 @@ stored shop/GH_TOKEN (<span data-l="en">project</span><span data-l="zh">项目</
         <span data-l="zh">已经在你账户下运行的恶意软件，可以在你粘贴时读取剪贴板。</span>
       </li>
     </ul>
-    <p class="prose"><a class="link" href="https://github.com/achjqz/tongs/blob/main/SECURITY.md"><span data-l="en">Full threat model in SECURITY.md</span><span data-l="zh">完整的威胁模型见 SECURITY.md</span></a></p>
   </div>
 </section>
 
 <section class="section" id="install">
   <div class="wrap">
-    <h2>
-      <span data-l="en">Install</span>
-      <span data-l="zh">安装</span>
+    <h2 class="reveal">
+      <span data-l="en">Install it yourself</span>
+      <span data-l="zh">自己安装</span>
     </h2>
-    <div class="install-steps">
+    <div class="install-steps reveal">
       <figure class="term copyable">
         <figcaption>Homebrew</figcaption>
 <pre tabindex="0" id="cmd-tap">brew install achjqz/tap/tongs</pre>
@@ -303,8 +467,8 @@ stored shop/GH_TOKEN (<span data-l="en">project</span><span data-l="zh">项目</
       </figure>
       <figure class="term copyable">
         <figcaption><span data-l="en">Binary (Intel and Apple Silicon)</span><span data-l="zh">编译好的程序（Intel 和 Apple 芯片通用）</span></figcaption>
-<pre tabindex="0" id="cmd-bin">curl -fsSL https://github.com/achjqz/tongs/releases/latest/download/tongs-macos-universal.tar.gz | tar xz
-mv tongs ~/.local/bin/</pre>
+<pre tabindex="0" id="cmd-bin">mkdir -p ~/.local/bin
+curl -fsSL https://github.com/achjqz/tongs/releases/latest/download/tongs-macos-universal.tar.gz | tar xz -C ~/.local/bin tongs</pre>
         <button class="copy" type="button" data-copy="cmd-bin"><span data-l="en">Copy</span><span data-l="zh">复制</span></button>
       </figure>
       <figure class="term copyable">
@@ -321,7 +485,7 @@ tongs setup codex --apply</pre>
         <button class="copy" type="button" data-copy="cmd-setup"><span data-l="en">Copy</span><span data-l="zh">复制</span></button>
       </figure>
     </div>
-    <ul class="notes">
+    <ul class="notes reveal">
       <li>
         <span data-l="en">Releases aren't notarized yet. macOS runs the binary installed with brew or curl. A file downloaded in a browser is blocked until you run <code>xattr -d com.apple.quarantine tongs</code>.</span>
         <span data-l="zh">发布版本还没有经过公证。用 brew 或 curl 安装的可以直接运行；用浏览器下载的文件会被拦截，需要先执行 <code>xattr -d com.apple.quarantine tongs</code>。</span>
@@ -337,9 +501,19 @@ tongs setup codex --apply</pre>
 </main>
 
 <footer class="foot">
+  <div class="plate" aria-hidden="true">
+    <div class="wrap plate-row">
+      <svg viewBox="0 0 32 32" aria-hidden="true">
+        <path d="M10 30 18.500 12Q20 8 17.500 4M22 30 13.500 12Q12 8 14.500 4"/>
+        <circle cx="16" cy="17.300" r="1.500"/>
+      </svg>
+      <span>tongs</span>
+    </div>
+  </div>
   <div class="wrap foot-row">
     <span>tongs · Apache-2.0</span>
     <span class="foot-links">
+      <a href="/llms.txt">llms.txt</a>
       <a href="https://github.com/achjqz/tongs">GitHub</a>
       <a href="https://github.com/achjqz/tongs/blob/main/SECURITY.md">Security</a>
       <a href="https://github.com/achjqz/tongs/releases">Releases</a>

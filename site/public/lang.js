@@ -4,4 +4,5 @@
   try { saved = localStorage.getItem("tongs-lang"); } catch (e) {}
   var wanted = saved || ((navigator.language || "").toLowerCase().indexOf("zh") === 0 ? "zh-CN" : "en");
   document.documentElement.lang = wanted;
+  document.documentElement.classList.add("js");
 })();
