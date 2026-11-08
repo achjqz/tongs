@@ -2,7 +2,7 @@
 
 **让 AI 编程 agent 用你的 API key，但永远看不到它。**
 
-[English](README.md)
+[官网](https://tongs.roamake.com) · [English](README.md)
 
 Claude Code、Codex 这类 agent 经常需要凭据：GitHub token、Stripe key、数据库密码。常见做法要么是把 key 贴进对话，要么是留在明文 `.env` 里。无论哪种，值都会进 agent 的对话记录：每一轮都会重新发给模型服务商，还会一直留在磁盘上。
 

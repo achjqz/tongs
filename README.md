@@ -2,7 +2,7 @@
 
 **Let AI coding agents use your API keys without ever seeing them.**
 
-[中文说明](README.zh-CN.md)
+[Website](https://tongs.roamake.com) · [中文说明](README.zh-CN.md)
 
 Coding agents (Claude Code, Codex, …) constantly need credentials: a GitHub token, a Stripe key, a database password. The usual options are pasting the key into the chat or leaving it in a plaintext `.env`. Either way it ends up in the agent's transcript, which is re-sent to the model provider on every turn and kept on disk.
 
